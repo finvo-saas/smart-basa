@@ -18,23 +18,22 @@ import {
 const DEFAULT_API_BASE = 'http://127.0.0.1:8000/api/v1'
 
 export function getApiBaseUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_API_URL?.trim()
-  if (typeof window !== 'undefined') {
-    if (!raw || raw.startsWith('/')) {
-      return (raw || '/api/v1').replace(/\/$/, '')
-    }
-    try {
-      const apiOrigin = new URL(raw, window.location.href).origin
-      if (apiOrigin === window.location.origin) {
-        return raw.replace(/\/$/, '')
-      }
-    } catch {
-      /* use same-origin proxy */
-    }
-    return '/api/v1'
+  // SSR: prefer Docker-internal URL so server components skip the public hop
+  if (typeof window === 'undefined') {
+    const internal = process.env.API_INTERNAL_URL?.trim()
+    if (internal) return internal.replace(/\/$/, '')
+    const raw = process.env.NEXT_PUBLIC_API_URL?.trim()
+    if (raw) return raw.replace(/\/$/, '')
+    return DEFAULT_API_BASE
   }
-  if (raw) return raw.replace(/\/$/, '')
-  return DEFAULT_API_BASE
+
+  const raw = process.env.NEXT_PUBLIC_API_URL?.trim()
+  // Relative path → same-origin Next rewrite (local / optional fallback)
+  if (!raw || raw.startsWith('/')) {
+    return (raw || '/api/v1').replace(/\/$/, '')
+  }
+  // Absolute URL (e.g. https://api.smartbasa.com/api/v1) — cross-subdomain OK
+  return raw.replace(/\/$/, '')
 }
 
 type RequestOptions = {
@@ -116,6 +115,13 @@ async function refreshAccessToken(): Promise<boolean> {
     return refreshInFlight
   }
 
+  // Do not resurrect a session while logout is in progress / just completed.
+  const { isLogoutGuardActive } = await import('@/lib/auth/session-events')
+  if (isLogoutGuardActive()) {
+    clearAuthTokens()
+    return false
+  }
+
   refreshInFlight = (async () => {
     const refresh = getRefreshToken()
     try {
@@ -137,6 +143,10 @@ async function refreshAccessToken(): Promise<boolean> {
         user?: { id: string }
       }>(response)
       if (!result.ok) {
+        clearAuthTokens()
+        return false
+      }
+      if (isLogoutGuardActive()) {
         clearAuthTokens()
         return false
       }

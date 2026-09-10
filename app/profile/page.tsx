@@ -944,9 +944,9 @@ export default function ProfilePage() {
                   <Button
                     variant="outline"
                     className="w-full justify-start"
-                    onClick={() => {
-                      logout()
-                      router.push('/login')
+                    onClick={async () => {
+                      await logout()
+                      window.location.assign('/')
                     }}
                   >
                     <LogOut className="mr-2 h-4 w-4" />

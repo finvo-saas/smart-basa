@@ -29,15 +29,15 @@ export function DiscoverSection({
 }) {
   return (
     <section className={cn('py-10 sm:py-14', className)}>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
-          <div className="max-w-2xl space-y-1">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+        <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+          <div className="min-w-0 max-w-2xl space-y-1">
             {eyebrow ? (
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">
                 {eyebrow}
               </p>
             ) : null}
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            <h2 className="text-balance text-xl font-bold tracking-tight sm:text-3xl">
               {title}
             </h2>
             {description ? (
@@ -46,24 +46,27 @@ export function DiscoverSection({
               </p>
             ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex w-full flex-wrap items-stretch gap-2 sm:w-auto sm:shrink-0 sm:items-center">
             {onRefresh ? (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className="min-w-0 flex-1 sm:flex-none"
                 onClick={onRefresh}
                 disabled={refreshing}
               >
                 <RefreshCw
-                  className={cn('mr-1.5 h-4 w-4', refreshing && 'animate-spin')}
+                  className={cn('mr-1.5 h-4 w-4 shrink-0', refreshing && 'animate-spin')}
                 />
-                Refresh
+                <span className="truncate">Refresh</span>
               </Button>
             ) : null}
             {href && hrefLabel ? (
-              <Button asChild size="sm">
-                <Link href={href}>{hrefLabel}</Link>
+              <Button asChild size="sm" className="min-w-0 flex-1 sm:flex-none">
+                <Link href={href} className="truncate">
+                  {hrefLabel}
+                </Link>
               </Button>
             ) : null}
           </div>

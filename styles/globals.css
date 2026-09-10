@@ -54,8 +54,12 @@
     @apply border-border;
   }
 
+  html {
+    @apply max-w-full overflow-x-clip;
+  }
+
   body {
-    @apply bg-background text-foreground transition-colors duration-200;
+    @apply max-w-full overflow-x-clip bg-background text-foreground transition-colors duration-200;
   }
 
   :focus-visible {

@@ -242,7 +242,7 @@ export default function MemberMealSheetPage() {
             </Badge>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-4">
               <SummaryTile
                 label={tm('totalMeals')}
                 value={formatNumber(totals.memberMeals)}

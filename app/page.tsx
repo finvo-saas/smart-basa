@@ -14,7 +14,7 @@ import { CTASection } from '@/components/home/CTASection'
 export default function Home() {
   return (
     <Layout>
-      <div className="overflow-hidden">
+      <div className="min-w-0">
         {/* Hero Section */}
         <HeroSection />
         <QuickExploreBar />

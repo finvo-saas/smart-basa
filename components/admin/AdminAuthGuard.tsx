@@ -48,7 +48,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
   if (!ready) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <LoadingState message="Verifying admin access…" />
+        <LoadingState label="Verifying admin access..." className="min-h-0 py-0" />
       </div>
     )
   }

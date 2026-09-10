@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Check, LogOut, User } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -53,7 +52,6 @@ export function UserAccountMenu({
   showName = false,
   className,
 }: UserAccountMenuProps) {
-  const router = useRouter()
   const initials = getInitials(userName)
   const { enabledVerticals, primaryFocus, focusSelected } = useOwnerFocus()
   const roleLabel =
@@ -61,9 +59,9 @@ export function UserAccountMenu({
       ? ownerRoleLabel(primaryFocus, enabledVerticals, focusSelected)
       : roleLabels[role]
 
-  const handleLogout = () => {
-    logout()
-    router.push('/login')
+  const handleLogout = async () => {
+    await logout()
+    window.location.assign('/')
   }
 
   return (

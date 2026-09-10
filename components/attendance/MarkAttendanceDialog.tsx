@@ -120,11 +120,11 @@ export function MarkAttendanceDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="left-[50%] top-0 flex h-[100dvh] max-h-[100dvh] w-full max-w-full translate-x-[-50%] translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:top-[50%] sm:h-auto sm:max-h-[85vh] sm:w-[calc(100%-2rem)] sm:max-w-2xl sm:translate-y-[-50%] sm:rounded-lg sm:border sm:p-0">
-        <DialogHeader className="shrink-0 space-y-1.5 px-4 pb-2 pt-5 pr-12 text-left sm:px-6 sm:pt-6">
-          <DialogTitle className="text-base sm:text-lg">
+        <DialogHeader className="shrink-0 space-y-1.5 px-3 pb-2 pt-5 pr-10 text-left sm:px-6 sm:pt-6 sm:pr-12">
+          <DialogTitle className="text-balance text-base sm:text-lg">
             Mark Attendance
           </DialogTitle>
-          <DialogDescription className="text-sm">
+          <DialogDescription className="text-pretty text-xs sm:text-sm">
             Mark attendance for students on a specific date
           </DialogDescription>
         </DialogHeader>
@@ -134,7 +134,7 @@ export function MarkAttendanceDialog({
             onSubmit={form.handleSubmit(handleSubmit)}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-2 sm:px-6">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-6">
               <div className="space-y-4 pb-2">
                 {/* Date */}
                 <FormField
@@ -157,13 +157,14 @@ export function MarkAttendanceDialog({
                   name="studentIds"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="flex items-center justify-between mb-2">
-                        <FormLabel>Select Students</FormLabel>
+                      <div className="mb-2 flex flex-col gap-2 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
+                        <FormLabel className="mb-0">Select Students</FormLabel>
                         <div className="flex gap-2">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
+                            className="flex-1 min-[380px]:flex-none"
                             onClick={() =>
                               field.onChange(messStudents.map(s => s.id))
                             }
@@ -174,15 +175,16 @@ export function MarkAttendanceDialog({
                             type="button"
                             variant="outline"
                             size="sm"
+                            className="flex-1 min-[380px]:flex-none"
                             onClick={() => field.onChange([])}
                           >
                             Deselect All
                           </Button>
                         </div>
                       </div>
-                      <div className="rounded-lg border p-4 max-h-48 overflow-y-auto space-y-2">
+                      <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border p-2 sm:p-4">
                         {messStudents.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-4">
+                          <p className="py-4 text-center text-sm text-muted-foreground">
                             No students assigned to this mess
                           </p>
                         ) : (
@@ -206,11 +208,13 @@ export function MarkAttendanceDialog({
                               />
                               <label
                                 htmlFor={`student-${student.id}`}
-                                className="flex-1 cursor-pointer text-sm"
+                                className="min-w-0 flex-1 cursor-pointer text-sm"
                               >
-                                {student.name}{' '}
-                                {student.seatNumber &&
-                                  `(Seat ${student.seatNumber})`}
+                                <span className="break-words">
+                                  {student.name}{' '}
+                                  {student.seatNumber &&
+                                    `(Seat ${student.seatNumber})`}
+                                </span>
                               </label>
                             </div>
                           ))
@@ -357,7 +361,7 @@ export function MarkAttendanceDialog({
                   className={
                     attendanceType === 'meal'
                       ? 'hidden'
-                      : 'grid grid-cols-2 gap-4'
+                      : 'grid grid-cols-1 gap-4 min-[380px]:grid-cols-2'
                   }
                 >
                   <FormField
@@ -415,15 +419,20 @@ export function MarkAttendanceDialog({
               </div>
             </div>
 
-            <DialogFooter className="shrink-0 gap-2 border-t bg-background px-4 py-3 sm:flex-row sm:justify-end sm:space-x-0 sm:px-6">
+            <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t bg-background px-3 py-3 sm:flex-row sm:justify-end sm:space-x-0 sm:px-6">
               <Button
                 type="button"
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => onOpenChange(false)}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={selectedCount === 0}>
+              <Button
+                type="submit"
+                className="w-full whitespace-normal sm:w-auto"
+                disabled={selectedCount === 0}
+              >
                 Mark Attendance ({selectedCount} student
                 {selectedCount !== 1 ? 's' : ''})
               </Button>

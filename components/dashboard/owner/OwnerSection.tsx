@@ -25,20 +25,27 @@ export function OwnerSection({
   children,
 }: OwnerSectionProps) {
   return (
-    <section className="rounded-2xl border bg-card/40 p-4 md:p-5">
+    <section className="rounded-2xl border bg-card/40 p-3 sm:p-4 md:p-5">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="shrink-0 rounded-xl border border-primary/20 bg-primary/10 p-2.5 text-primary">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="shrink-0 rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary sm:p-2.5">
             <div className="h-5 w-5 md:h-6 md:w-6">{icon}</div>
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-bold md:text-xl">{title}</h2>
-            <p className="text-xs text-muted-foreground md:text-sm">
+            <h2 className="truncate text-base font-bold sm:text-lg md:text-xl">
+              {title}
+            </h2>
+            <p className="text-pretty text-xs text-muted-foreground md:text-sm">
               {description}
             </p>
           </div>
         </div>
-        <Button asChild variant="outline" size="sm" className="shrink-0">
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="w-full shrink-0 sm:w-auto"
+        >
           <Link href={href}>{openLabel}</Link>
         </Button>
       </div>
@@ -93,7 +100,7 @@ export function QuickLinkGrid({ links }: { links: QuickLink[] }) {
 
 export function StatGrid({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 md:gap-4 lg:grid-cols-3">
       {children}
     </div>
   )

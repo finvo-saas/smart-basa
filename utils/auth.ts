@@ -2,7 +2,7 @@ import { UserRole } from '@/types'
 import type { AdminRole } from '@/types/admin'
 import type { UserVerificationStatus } from '@/types/userVerification'
 import type { AuthSession, AuthUser } from '@/lib/api/auth'
-import { notifyAuthSessionChanged } from '@/lib/auth/session-events'
+import { notifyAuthSessionChanged, setLogoutGuard, clearLogoutGuard } from '@/lib/auth/session-events'
 import {
   clearDemoIdentity,
   syncDemoIdentityForRole,
@@ -29,10 +29,7 @@ function persistOwnerFocus(user: AuthUser): void {
     OWNER_VERTICALS_KEY,
     JSON.stringify(normalizeOwnerVerticals(user.ownerEnabledVerticals)),
   )
-  sessionStorage.setItem(
-    OWNER_PRIMARY_KEY,
-    user.ownerPrimaryFocus || '',
-  )
+  sessionStorage.setItem(OWNER_PRIMARY_KEY, user.ownerPrimaryFocus || '')
   sessionStorage.setItem(
     OWNER_FOCUS_SELECTED_KEY,
     user.ownerFocusSelected ? 'true' : 'false',
@@ -60,6 +57,9 @@ export function isOwnerFocusSelected(): boolean {
   if (typeof window === 'undefined') return false
   return sessionStorage.getItem(OWNER_FOCUS_SELECTED_KEY) === 'true'
 }
+
+/** Re-export for callers that import from utils/auth. */
+export { isLogoutGuardActive } from '@/lib/auth/session-events'
 
 export const getStoredRole = (): UserRole | null => {
   if (typeof window === 'undefined') return null
@@ -107,6 +107,7 @@ export const setUserSession = (params: {
   name?: string
 }): void => {
   if (typeof window === 'undefined') return
+  clearLogoutGuard()
   sessionStorage.setItem('isLoggedIn', 'true')
   sessionStorage.setItem('otpVerified', 'true')
   sessionStorage.setItem('userRole', params.role)
@@ -123,6 +124,8 @@ export function applyAuthSession(
 ): void {
   if (typeof window === 'undefined') return
 
+  clearLogoutGuard()
+
   setAuthTokens({
     access: session.access,
     refresh: session.refresh,
@@ -138,7 +141,7 @@ export function applyAuthSession(
   )
   sessionStorage.setItem('hasPin', session.hasPin ? 'true' : 'false')
 
-    const complete =
+  const complete =
     options?.complete ??
     (Boolean(session.user.roleSelected) &&
       !session.needsRoleSelection &&
@@ -167,7 +170,6 @@ export function applyAuthSession(
     sessionStorage.removeItem('userRole')
   }
 
-  // Cache available roles for role-selection UI
   sessionStorage.setItem(
     'availableRoles',
     JSON.stringify(session.availableRoles),
@@ -221,7 +223,8 @@ export const setVerificationStatus = (
   sessionStorage.setItem('verificationStatus', status)
 }
 
-export const logout = (): void => {
+/** Wipe client auth state (tokens + session flags). */
+export function clearLocalAuthState(): void {
   if (typeof window === 'undefined') return
   clearAuthTokens()
   sessionStorage.removeItem('isLoggedIn')
@@ -243,8 +246,23 @@ export const logout = (): void => {
   sessionStorage.removeItem(OWNER_PRIMARY_KEY)
   sessionStorage.removeItem(OWNER_FOCUS_SELECTED_KEY)
   clearDemoIdentity()
+}
+
+/**
+ * Sign out: revoke refresh cookie on the API, then clear local session.
+ * Prefer awaiting this before navigating away.
+ */
+export async function logout(): Promise<void> {
+  if (typeof window === 'undefined') return
+  setLogoutGuard()
+  try {
+    const { logoutApi } = await import('@/lib/api/auth')
+    await logoutApi()
+  } catch {
+    /* still clear client state */
+  }
+  clearLocalAuthState()
   notifyAuthSessionChanged()
-  void import('@/lib/api/auth').then(({ logoutApi }) => logoutApi())
 }
 
 export const getStoredAdminRole = (): AdminRole | null => {
@@ -268,6 +286,7 @@ export const setAdminSession = (params: {
    * Does NOT store JWTs — admin API calls will return empty without tokens.
    */
   if (typeof window === 'undefined') return
+  clearLogoutGuard()
   sessionStorage.setItem('isLoggedIn', 'true')
   sessionStorage.setItem('otpVerified', 'true')
   sessionStorage.setItem('userRole', 'admin')

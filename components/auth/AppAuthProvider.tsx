@@ -2,8 +2,17 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { RouteAuthGuard } from './RouteAuthGuard'
+import { LoadingState } from '@/components/page'
 import { assertNoSecretsInPublicEnv } from '@/lib/security/client-env'
 import { restoreSessionFromCookie } from '@/lib/auth/restore-session'
+
+function FullScreenLoading({ label = 'Loading...' }: { label?: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <LoadingState label={label} className="min-h-0 py-0" />
+    </div>
+  )
+}
 
 export function AppAuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
@@ -20,21 +29,11 @@ export function AppAuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   if (!ready) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        Loading…
-      </div>
-    )
+    return <FullScreenLoading />
   }
 
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-          Loading…
-        </div>
-      }
-    >
+    <Suspense fallback={<FullScreenLoading />}>
       <RouteAuthGuard>{children}</RouteAuthGuard>
     </Suspense>
   )

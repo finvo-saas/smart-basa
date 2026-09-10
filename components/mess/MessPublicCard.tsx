@@ -114,18 +114,21 @@ export function MessPublicCard({ mess }: MessPublicCardProps) {
           </div>
         )}
 
-        <div className="mt-4 flex gap-2">
-          <Button variant="outline" className="flex-1" asChild>
-            <Link href={messPath(mess)}>View details</Link>
+        <div className="mt-4 grid grid-cols-2 gap-2 min-[360px]:flex min-[360px]:flex-wrap">
+          <Button variant="outline" className="min-w-0 flex-1" asChild>
+            <Link href={messPath(mess)} className="truncate">
+              View details
+            </Link>
           </Button>
-          <Button className="flex-1" asChild>
-            <a href={`tel:${mess.ownerPhone}`}>
-              <Phone className="mr-1.5 h-4 w-4" />
+          <Button className="min-w-0 flex-1" asChild>
+            <a href={`tel:${mess.ownerPhone}`} className="truncate">
+              <Phone className="mr-1.5 h-4 w-4 shrink-0" />
               Call
             </a>
           </Button>
           <WhatsAppButton
             size="icon"
+            className="col-span-2 w-full min-[360px]:col-span-1 min-[360px]:w-auto"
             number={mess.ownerWhatsapp}
             message={tContact('messageOwner')}
             label=""

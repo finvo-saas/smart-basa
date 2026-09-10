@@ -41,7 +41,11 @@ export function BrandWordmark({ className }: { className?: string }) {
         width={360}
         height={48}
         priority
-        className={cn('w-auto object-contain dark:hidden', 'h-4', className)}
+        className={cn(
+          'w-auto max-w-full min-w-0 object-contain dark:hidden',
+          'h-4',
+          className
+        )}
       />
       <Image
         src="/brand/smartbasa-wordmark-dark.png"
@@ -49,7 +53,11 @@ export function BrandWordmark({ className }: { className?: string }) {
         width={360}
         height={48}
         priority
-        className={cn('hidden w-auto object-contain dark:block', 'h-4', className)}
+        className={cn(
+          'hidden w-auto max-w-full min-w-0 object-contain dark:block',
+          'h-4',
+          className
+        )}
       />
     </>
   )

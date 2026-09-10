@@ -29,13 +29,13 @@ export function TargetUsersSection() {
   const t = useTranslations('home')
 
   return (
-    <section className="py-12 sm:py-16 lg:py-20">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-12 text-center">
-          <h2 className="mb-4 text-3xl font-bold sm:text-4xl lg:text-5xl">
+    <section className="py-10 sm:py-16 lg:py-20">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+        <div className="mb-8 text-center sm:mb-12">
+          <h2 className="mb-4 text-balance text-2xl font-bold sm:text-4xl lg:text-5xl">
             {t('targetUsers.title')}
           </h2>
-          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+          <p className="mx-auto max-w-2xl text-pretty text-base text-muted-foreground sm:text-lg">
             {t('targetUsers.subtitle')}
           </p>
         </div>

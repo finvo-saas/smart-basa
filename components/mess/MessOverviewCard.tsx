@@ -60,8 +60,10 @@ export function MessOverviewCard({
         </div>
       </div>
 
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xl sm:text-2xl">{mess.name}</CardTitle>
+      <CardHeader className="space-y-1 px-3 pb-2 sm:px-6">
+        <CardTitle className="text-balance text-lg sm:text-2xl">
+          {mess.name}
+        </CardTitle>
         <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <MapPin className="h-3.5 w-3.5 shrink-0" />
           <span className="line-clamp-1">
@@ -70,26 +72,26 @@ export function MessOverviewCard({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg border p-3">
+      <CardContent className="space-y-4 px-3 sm:px-6">
+        <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:gap-3">
+          <div className="rounded-lg border p-2.5 sm:p-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Users className="h-3.5 w-3.5" />
+              <Users className="h-3.5 w-3.5 shrink-0" />
               Occupied
             </div>
-            <p className="mt-1 text-xl font-bold">
+            <p className="mt-1 break-words text-lg font-bold sm:text-xl">
               {occupied}
               <span className="text-sm font-normal text-muted-foreground">
                 /{mess.totalSeats}
               </span>
             </p>
           </div>
-          <div className="rounded-lg border p-3">
+          <div className="rounded-lg border p-2.5 sm:p-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <DollarSign className="h-3.5 w-3.5" />
+              <DollarSign className="h-3.5 w-3.5 shrink-0" />
               Monthly fee
             </div>
-            <p className="mt-1 text-xl font-bold text-primary">
+            <p className="mt-1 break-words text-lg font-bold text-primary sm:text-xl">
               ৳{mess.monthlyFee.toLocaleString()}
             </p>
           </div>
@@ -118,12 +120,17 @@ export function MessOverviewCard({
           </div>
         )}
 
-        <div className="flex items-center justify-between rounded-lg border p-3">
-          <div>
+        <div className="flex flex-col gap-2 rounded-lg border p-3 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
+          <div className="min-w-0">
             <p className="text-xs text-muted-foreground">Owner</p>
-            <p className="text-sm font-medium">{mess.ownerName}</p>
+            <p className="truncate text-sm font-medium">{mess.ownerName}</p>
           </div>
-          <Button variant="outline" size="sm" asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="w-full shrink-0 min-[360px]:w-auto"
+          >
             <a href={`tel:${mess.ownerPhone}`}>
               <Phone className="mr-1.5 h-3.5 w-3.5" />
               Call

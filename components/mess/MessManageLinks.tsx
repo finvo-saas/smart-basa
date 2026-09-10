@@ -71,12 +71,23 @@ export function MessManageLinks({
 
   if (variant === 'compact') {
     return (
-      <div className={cn('grid grid-cols-2 gap-2', className)}>
+      <div
+        className={cn(
+          'grid grid-cols-1 gap-2 min-[360px]:grid-cols-2',
+          className
+        )}
+      >
         {items.map(item => (
-          <Button key={item.href} variant="outline" size="sm" asChild>
-            <Link href={item.href}>
-              <item.icon className="mr-1.5 h-3.5 w-3.5" />
-              {item.label}
+          <Button
+            key={item.href}
+            variant="outline"
+            size="sm"
+            asChild
+            className="h-auto min-w-0 justify-start whitespace-normal px-2.5 py-2 text-left text-xs"
+          >
+            <Link href={item.href} className="min-w-0">
+              <item.icon className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{item.label}</span>
             </Link>
           </Button>
         ))}

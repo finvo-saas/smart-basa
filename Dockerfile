@@ -10,9 +10,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build-time public env (also used for SSR inside Docker network)
+# Build-time public env. Browser uses NEXT_PUBLIC_API_URL (api subdomain in prod).
+# SSR uses API_INTERNAL_URL at runtime (see docker-compose).
 ARG NEXT_PUBLIC_SITE_URL=https://localhost
-ARG NEXT_PUBLIC_API_URL=http://api:8000/api/v1
+ARG NEXT_PUBLIC_API_URL=https://api.localhost/api/v1
 ARG API_PROXY_TARGET=http://api:8000
 ARG NEXT_PUBLIC_STORAGE_CDN_HOST=
 
@@ -29,7 +30,8 @@ WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    API_INTERNAL_URL=http://api:8000/api/v1
 
 RUN useradd --create-home --uid 10001 nextjs
 

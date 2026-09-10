@@ -29,13 +29,13 @@ export function QuickExploreBar() {
   }
 
   return (
-    <div className="relative z-10 mx-auto -mt-6 max-w-4xl px-4 sm:-mt-8 sm:px-6 lg:px-8">
-      <div className="rounded-2xl border bg-background/95 p-3 shadow-lg backdrop-blur sm:p-4">
+    <div className="relative z-10 mx-auto -mt-5 max-w-4xl px-3 sm:-mt-8 sm:px-6 lg:px-8">
+      <div className="rounded-2xl border bg-background/95 p-2.5 shadow-lg backdrop-blur sm:p-4">
         <form
           onSubmit={onSubmit}
-          className="flex flex-col gap-3 sm:flex-row sm:items-center"
+          className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3"
         >
-          <div className="relative flex-1">
+          <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
@@ -45,17 +45,23 @@ export function QuickExploreBar() {
               aria-label={t('searchPlaceholder')}
             />
           </div>
-          <Button type="submit" size="lg" className="h-11 sm:w-auto">
+          <Button type="submit" size="lg" className="h-11 w-full shrink-0 sm:w-auto">
             {t('searchCta')}
           </Button>
         </form>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-2.5 flex flex-wrap gap-1.5 sm:mt-3 sm:gap-2">
           {CATEGORIES.map(item => {
             const Icon = item.icon
             return (
-              <Button key={item.key} variant="secondary" size="sm" asChild>
+              <Button
+                key={item.key}
+                variant="secondary"
+                size="sm"
+                asChild
+                className="h-8 px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
+              >
                 <Link href={item.href}>
-                  <Icon className="mr-1.5 h-3.5 w-3.5" />
+                  <Icon className="mr-1 h-3.5 w-3.5 shrink-0 sm:mr-1.5" />
                   {t(`categories.${item.key}`)}
                 </Link>
               </Button>

@@ -62,20 +62,93 @@ export function AttendanceTable({
   if (records.length === 0) {
     return (
       <Card>
-        <CardContent className="py-12 text-center">
-          <p className="text-muted-foreground">No attendance records found</p>
+        <CardContent className="px-3 py-10 text-center sm:py-12">
+          <p className="text-sm text-muted-foreground">
+            No attendance records found
+          </p>
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Attendance Records</CardTitle>
+    <Card className="min-w-0 overflow-hidden">
+      <CardHeader className="p-3 sm:p-6">
+        <CardTitle className="text-base sm:text-lg">
+          Attendance Records
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="rounded-md border">
+      <CardContent className="space-y-3 p-3 pt-0 sm:p-6 sm:pt-0">
+        {/* Mobile cards */}
+        <div className="space-y-2 md:hidden">
+          {records.map(record => {
+            const status = statusConfig[record.status]
+            return (
+              <div
+                key={record.id}
+                className="rounded-lg border p-3 text-sm"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 space-y-1">
+                    {showStudentName && (
+                      <p className="truncate font-medium">{record.studentName}</p>
+                    )}
+                    <p className="text-muted-foreground">
+                      {format(new Date(record.date), 'MMM dd, yyyy')}
+                    </p>
+                  </div>
+                  {showStudentName && onEdit && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => onEdit(record)}
+                      aria-label="Edit record"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <Badge variant="outline" className={status.className}>
+                    {status.label}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {record.type === 'general'
+                      ? 'General'
+                      : record.type === 'meal'
+                        ? 'Meal'
+                        : 'Both'}
+                  </Badge>
+                  {record.mealCategory && (
+                    <span className="text-xs capitalize text-muted-foreground">
+                      ({record.mealCategory})
+                    </span>
+                  )}
+                </div>
+                {(record.checkInTime || record.checkOutTime) && (
+                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    {record.checkInTime && (
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        In {format(new Date(record.checkInTime), 'HH:mm')}
+                      </span>
+                    )}
+                    {record.checkOutTime && (
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Out {format(new Date(record.checkOutTime), 'HH:mm')}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden overflow-x-auto rounded-md border md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -116,7 +189,7 @@ export function AttendanceTable({
                             : 'Both'}
                       </Badge>
                       {record.mealCategory && (
-                        <span className="ml-2 text-xs text-muted-foreground capitalize">
+                        <span className="ml-2 text-xs capitalize text-muted-foreground">
                           ({record.mealCategory})
                         </span>
                       )}
@@ -128,7 +201,7 @@ export function AttendanceTable({
                           {format(new Date(record.checkInTime), 'HH:mm')}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
+                        <span className="text-sm text-muted-foreground">-</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -138,7 +211,7 @@ export function AttendanceTable({
                           {format(new Date(record.checkOutTime), 'HH:mm')}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
+                        <span className="text-sm text-muted-foreground">-</span>
                       )}
                     </TableCell>
                     {showStudentName && onEdit && (

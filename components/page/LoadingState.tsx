@@ -1,24 +1,45 @@
-import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ListPageSkeleton } from './ListPageSkeleton'
 
+function LoadingSpinner({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'h-10 w-10 shrink-0 animate-spin rounded-full border-[3px] border-primary border-t-transparent',
+        className
+      )}
+      aria-hidden
+    />
+  )
+}
+
 export function LoadingState({
-  label = 'Loading…',
+  label = 'Loading...',
+  /** @deprecated Use `label` */
+  message,
   className,
   variant = 'spinner',
   skeletonCount = 6,
   skeletonVariant = 'card',
 }: {
   label?: string
+  message?: string
   className?: string
   variant?: 'spinner' | 'skeleton'
   skeletonCount?: number
   skeletonVariant?: 'card' | 'row' | 'table'
 }) {
+  const text = message ?? label
+
   if (variant === 'skeleton') {
     return (
-      <div role="status" aria-live="polite" aria-label={label} className={className}>
-        <p className="sr-only">{label}</p>
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label={text}
+        className={className}
+      >
+        <p className="sr-only">{text}</p>
         <ListPageSkeleton count={skeletonCount} variant={skeletonVariant} />
       </div>
     )
@@ -27,14 +48,19 @@ export function LoadingState({
   return (
     <div
       className={cn(
-        'flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-xl border bg-muted/20 py-12',
+        'flex w-full min-h-[200px] items-center justify-center py-10',
         className
       )}
       role="status"
       aria-live="polite"
+      aria-label={text}
     >
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-sm text-muted-foreground">{label}</p>
+      <div className="flex w-[7.75rem] flex-col items-center gap-4 rounded-[1.75rem] border border-border bg-background px-5 py-8 shadow-sm dark:bg-card">
+        <LoadingSpinner />
+        <p className="text-center text-sm leading-none text-muted-foreground">
+          {text}
+        </p>
+      </div>
     </div>
   )
 }

@@ -11,6 +11,7 @@ import {
   isPublicPath,
   isRoleAllowed,
 } from '@/lib/auth'
+import { AUTH_SESSION_CHANGED } from '@/lib/auth/session-events'
 import {
   getLoginPhone,
   getStoredRole,
@@ -34,117 +35,127 @@ export function RouteAuthGuard({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<GuardState>('loading')
 
   useEffect(() => {
-    const next = searchParams.get('next') || pathname
-    const role = getStoredRole()
-    const pinNeeded = needsPinSetup()
-    const pinReset = isPinResetFlow()
-    const authed = isOtpVerified() && hasAuthTokens()
+    const evaluate = () => {
+      const next = searchParams.get('next') || pathname
+      const role = getStoredRole()
+      const pinNeeded = needsPinSetup()
+      const pinReset = isPinResetFlow()
+      const authed = isOtpVerified() && hasAuthTokens()
 
-    const finish = (nextState: GuardState) => setState(nextState)
+      const finish = (nextState: GuardState) => setState(nextState)
+      const redirect = (href: string) => {
+        setState('loading')
+        router.replace(href)
+      }
 
-    if (isAdminPath(pathname) && !isAdminPublicPath(pathname)) {
-      if (pinNeeded && authed) {
-        router.replace('/set-pin')
+      if (isAdminPath(pathname) && !isAdminPublicPath(pathname)) {
+        if (pinNeeded && authed) {
+          redirect('/set-pin')
+          return
+        }
+        if (!isAdminSession()) {
+          redirect(`/admin/login?next=${encodeURIComponent(pathname)}`)
+          return
+        }
+        finish('ready')
         return
       }
-      if (!isAdminSession()) {
-        router.replace(`/admin/login?next=${encodeURIComponent(pathname)}`)
+
+      if (isAuthFlowPath(pathname)) {
+        if (pathname === '/login' && hasCompleteSession()) {
+          redirect(getDefaultPathForRole(role ?? 'renter'))
+          return
+        }
+        if (pathname === '/otp-verify' && !getLoginPhone()) {
+          redirect('/login')
+          return
+        }
+        if (pathname === '/otp-verify' && hasCompleteSession()) {
+          redirect(getDefaultPathForRole(role ?? 'renter'))
+          return
+        }
+        if (pathname === '/set-pin') {
+          if (!authed) {
+            redirect('/login')
+            return
+          }
+          if (!pinNeeded && !pinReset && hasCompleteSession()) {
+            redirect(getDefaultPathForRole(role ?? 'renter'))
+            return
+          }
+          if (!pinNeeded && !pinReset) {
+            redirect('/role-selection')
+            return
+          }
+        }
+        if (pathname === '/role-selection') {
+          if (!authed) {
+            redirect('/login')
+            return
+          }
+          if (pinNeeded || pinReset) {
+            redirect('/set-pin')
+            return
+          }
+          if (isLoggedIn() && hasCompleteSession()) {
+            redirect(getDefaultPathForRole(role ?? 'renter'))
+            return
+          }
+        }
+        finish('ready')
         return
       }
+
+      if (pathname === '/account/change-phone' && !isLoggedIn()) {
+        redirect(`/login?next=${encodeURIComponent(pathname)}`)
+        return
+      }
+
+      if (/^\/hotels\/[^/]+\/book/.test(pathname) && !isLoggedIn()) {
+        redirect(`/login?next=${encodeURIComponent(pathname)}`)
+        return
+      }
+
+      if (isProtectedPath(pathname) && !isPublicPath(pathname)) {
+        if (!isLoggedIn() || !isOtpVerified()) {
+          if (authed && pinNeeded) {
+            redirect('/set-pin')
+            return
+          }
+          if (authed && !hasCompleteSession()) {
+            redirect('/role-selection')
+            return
+          }
+          redirect(`/login?next=${encodeURIComponent(next)}`)
+          return
+        }
+        if (pinNeeded && pathname !== '/set-pin') {
+          redirect('/set-pin')
+          return
+        }
+        if (!hasCompleteSession() && pathname !== '/role-selection') {
+          redirect('/role-selection')
+          return
+        }
+
+        if (role && !isRoleAllowed(pathname, role)) {
+          finish('denied')
+          return
+        }
+      }
+
       finish('ready')
-      return
     }
 
-    if (isAuthFlowPath(pathname)) {
-      if (pathname === '/login' && hasCompleteSession()) {
-        router.replace(getDefaultPathForRole(role ?? 'renter'))
-        return
-      }
-      if (pathname === '/otp-verify' && !getLoginPhone()) {
-        router.replace('/login')
-        return
-      }
-      if (pathname === '/otp-verify' && hasCompleteSession()) {
-        router.replace(getDefaultPathForRole(role ?? 'renter'))
-        return
-      }
-      if (pathname === '/set-pin') {
-        if (!authed) {
-          router.replace('/login')
-          return
-        }
-        if (!pinNeeded && !pinReset && hasCompleteSession()) {
-          router.replace(getDefaultPathForRole(role ?? 'renter'))
-          return
-        }
-        if (!pinNeeded && !pinReset) {
-          router.replace('/role-selection')
-          return
-        }
-      }
-      if (pathname === '/role-selection') {
-        if (!authed) {
-          router.replace('/login')
-          return
-        }
-        if (pinNeeded || pinReset) {
-          router.replace('/set-pin')
-          return
-        }
-        if (isLoggedIn() && hasCompleteSession()) {
-          router.replace(getDefaultPathForRole(role ?? 'renter'))
-          return
-        }
-      }
-      finish('ready')
-      return
-    }
-
-    if (pathname === '/account/change-phone' && !isLoggedIn()) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`)
-      return
-    }
-
-    if (/^\/hotels\/[^/]+\/book/.test(pathname) && !isLoggedIn()) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`)
-      return
-    }
-
-    if (isProtectedPath(pathname) && !isPublicPath(pathname)) {
-      if (!isLoggedIn() || !isOtpVerified()) {
-        if (authed && pinNeeded) {
-          router.replace('/set-pin')
-          return
-        }
-        if (authed && !hasCompleteSession()) {
-          router.replace('/role-selection')
-          return
-        }
-        router.replace(`/login?next=${encodeURIComponent(next)}`)
-        return
-      }
-      if (pinNeeded && pathname !== '/set-pin') {
-        router.replace('/set-pin')
-        return
-      }
-      if (!hasCompleteSession() && pathname !== '/role-selection') {
-        router.replace('/role-selection')
-        return
-      }
-
-      if (role && !isRoleAllowed(pathname, role)) {
-        finish('denied')
-        return
-      }
-    }
-
-    finish('ready')
+    evaluate()
+    window.addEventListener(AUTH_SESSION_CHANGED, evaluate)
+    return () => window.removeEventListener(AUTH_SESSION_CHANGED, evaluate)
   }, [pathname, router, searchParams])
 
   if (state === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <LoadingState message="Loading…" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <LoadingState label="Loading..." className="min-h-0 py-0" />
       </div>
     )
   }

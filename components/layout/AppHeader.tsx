@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import { LanguageSwitcher } from '@/components/i18n'
@@ -11,6 +12,13 @@ import { SearchNotification } from '@/components/search/SearchNotification'
 import { UserAccountMenu } from '@/components/layout/UserAccountMenu'
 import { BrandIcon, BrandWordmark } from '@/components/layout/BrandLogo'
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet'
+import {
   Moon,
   Sun,
   MessageCircle,
@@ -18,6 +26,8 @@ import {
   Heart,
   Clock,
   Bookmark,
+  Menu,
+  ChevronRight,
 } from 'lucide-react'
 import {
   getDisplayName,
@@ -27,9 +37,41 @@ import {
 } from '@/utils/auth'
 import type { UserRole } from '@/types'
 import { getCurrentAccountUserId } from '@/lib/api/account'
+import { cn } from '@/lib/utils'
+
+type GuestLink = {
+  href: string
+  labelKey:
+    | 'navSearch'
+    | 'navMess'
+    | 'navAreas'
+    | 'navUniversities'
+    | 'navHotels'
+    | 'navApartments'
+    | 'navRoommates'
+}
+
+const GUEST_LINKS: GuestLink[] = [
+  { href: '/search', labelKey: 'navSearch' },
+  { href: '/messes', labelKey: 'navMess' },
+  { href: '/areas', labelKey: 'navAreas' },
+  { href: '/university', labelKey: 'navUniversities' },
+  { href: '/hotels', labelKey: 'navHotels' },
+  { href: '/search?category=apartment', labelKey: 'navApartments' },
+  { href: '/roommates', labelKey: 'navRoommates' },
+]
+
+function guestLinkActive(pathname: string, href: string) {
+  const path = href.split('?')[0]
+  if (path === '/search') {
+    return pathname === '/search' || pathname.startsWith('/listings')
+  }
+  return pathname === path || pathname.startsWith(`${path}/`)
+}
 
 export function AppHeader() {
   const t = useTranslations('layout')
+  const pathname = usePathname()
   const { theme, toggle: toggleTheme } = useTheme()
   const [userName, setUserName] = useState('Guest')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
@@ -37,6 +79,7 @@ export function AppHeader() {
   const [mounted, setMounted] = useState(false)
   const [role, setRole] = useState<UserRole | null>(null)
   const [loggedIn, setLoggedIn] = useState(false)
+  const [guestMenuOpen, setGuestMenuOpen] = useState(false)
 
   useEffect(() => {
     const syncUser = () => {
@@ -57,7 +100,12 @@ export function AppHeader() {
     return () => window.removeEventListener('profile-updated', syncUser)
   }, [])
 
+  useEffect(() => {
+    setGuestMenuOpen(false)
+  }, [pathname])
+
   const userId = getCurrentAccountUserId()
+  const isGuest = mounted && !(loggedIn && role)
 
   const themeButton = (
     <Button
@@ -92,19 +140,19 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-14 items-center justify-between gap-2">
+      <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8">
+        <div className="flex h-14 min-w-0 items-center justify-between gap-1.5 sm:gap-2">
           <Link
             href="/"
-            className="flex min-w-0 shrink-0 items-center gap-2"
+            className="flex min-w-0 items-center gap-1.5 sm:gap-2"
             aria-label="SmartBasa home"
           >
-            <BrandIcon className="h-9 w-9" priority />
-            <BrandWordmark className="h-4 md:h-5" />
+            <BrandIcon className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" priority />
+            <BrandWordmark className="h-3.5 max-w-[5.75rem] min-[360px]:max-w-[7.5rem] sm:h-5 sm:max-w-none" />
           </Link>
 
-          {/* Desktop actions */}
-          <div className="hidden items-center gap-2 md:flex md:gap-3">
+          {/* Desktop / large tablet guest + auth actions */}
+          <div className="hidden items-center gap-1 lg:flex lg:gap-2">
             {!mounted ? (
               <div className="h-8 w-24 animate-pulse rounded bg-muted" />
             ) : loggedIn && role ? (
@@ -165,28 +213,21 @@ export function AppHeader() {
               </>
             ) : (
               <>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/search">{t('navSearch')}</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/messes">{t('navMess')}</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/areas">{t('navAreas')}</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/university">{t('navUniversities')}</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/hotels">{t('navHotels')}</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/search?category=apartment">{t('navApartments')}</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/roommates">{t('navRoommates')}</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
+                {GUEST_LINKS.map(link => (
+                  <Button
+                    key={link.href}
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className={cn(
+                      guestLinkActive(pathname, link.href) &&
+                        'bg-accent text-accent-foreground'
+                    )}
+                  >
+                    <Link href={link.href}>{t(link.labelKey)}</Link>
+                  </Button>
+                ))}
+                <Button size="sm" asChild>
                   <Link href="/login">{t('login')}</Link>
                 </Button>
                 <LanguageSwitcher variant="ghost" size="sm" />
@@ -195,29 +236,36 @@ export function AppHeader() {
             )}
           </div>
 
-          {/* Mobile actions */}
-          <div className="flex min-w-0 items-center gap-0.5 md:hidden">
+          {/* Compact header (< lg): full guest menu via sheet */}
+          <div className="flex min-w-0 shrink-0 items-center gap-0 lg:hidden">
             {!mounted ? (
-              <div className="h-8 w-20 animate-pulse rounded bg-muted" />
+              <div className="h-8 w-16 animate-pulse rounded bg-muted" />
             ) : loggedIn && role ? (
               <>
-                <SearchNotification userId={userId} />
-                {role === 'owner' && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    asChild
-                    className="h-9 w-9 shrink-0"
-                    title="Notices"
-                  >
-                    <Link href="/notices">
-                      <Bell className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                )}
+                <div className="hidden min-[380px]:contents">
+                  <SearchNotification userId={userId} />
+                  {role === 'owner' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      asChild
+                      className="h-9 w-9 shrink-0"
+                      title="Notices"
+                    >
+                      <Link href="/notices">
+                        <Bell className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  )}
+                </div>
                 {messagesButton}
                 {themeButton}
-                <LanguageSwitcher variant="ghost" size="sm" />
+                <LanguageSwitcher
+                  variant="ghost"
+                  size="icon"
+                  showLabel={false}
+                  className="h-9 w-9"
+                />
                 <UserAccountMenu
                   userName={userName}
                   isVerified={isVerified}
@@ -227,22 +275,80 @@ export function AppHeader() {
               </>
             ) : (
               <>
-                <Button variant="ghost" size="sm" asChild className="shrink-0">
-                  <Link href="/messes">{t('navMess')}</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild className="shrink-0">
-                  <Link href="/areas">{t('navAreas')}</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild className="shrink-0">
+                <Button
+                  size="sm"
+                  asChild
+                  className="h-9 shrink-0 px-2.5 text-xs min-[360px]:px-3 min-[360px]:text-sm"
+                >
                   <Link href="/login">{t('login')}</Link>
                 </Button>
-                <LanguageSwitcher variant="ghost" size="sm" />
+                <LanguageSwitcher
+                  variant="ghost"
+                  size="icon"
+                  showLabel={false}
+                  className="h-9 w-9"
+                />
                 {themeButton}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  aria-label={t('openMenu')}
+                  aria-expanded={guestMenuOpen}
+                  onClick={() => setGuestMenuOpen(true)}
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
               </>
             )}
           </div>
         </div>
       </div>
+
+      {/* Guest browse menu — all links reachable on small screens */}
+      {isGuest && (
+        <Sheet open={guestMenuOpen} onOpenChange={setGuestMenuOpen}>
+          <SheetContent
+            side="right"
+            className="flex w-[min(100vw-2.5rem,20rem)] flex-col gap-0 p-0 lg:hidden"
+          >
+            <SheetHeader className="border-b px-5 py-4 text-left">
+              <SheetTitle className="text-base">{t('browseMenu')}</SheetTitle>
+              <SheetDescription className="text-xs">
+                {t('browseMenuHint')}
+              </SheetDescription>
+            </SheetHeader>
+            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-3">
+              {GUEST_LINKS.map(link => {
+                const active = guestLinkActive(pathname, link.href)
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setGuestMenuOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors',
+                      active
+                        ? 'bg-primary/10 font-medium text-primary'
+                        : 'text-foreground hover:bg-accent'
+                    )}
+                  >
+                    <span className="flex-1">{t(link.labelKey)}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0 opacity-40" />
+                  </Link>
+                )
+              })}
+            </nav>
+            <div className="border-t p-4">
+              <Button asChild className="w-full">
+                <Link href="/login" onClick={() => setGuestMenuOpen(false)}>
+                  {t('login')}
+                </Link>
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </header>
   )
 }

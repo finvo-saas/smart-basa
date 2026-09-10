@@ -32,23 +32,27 @@ export function StatCard({
         className
       )}
     >
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-        <div className="min-w-0 space-y-1">
-          <p className="text-xs font-medium text-muted-foreground md:text-sm">
+      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 p-3 pb-2 sm:p-6 sm:pb-2">
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-[11px] font-medium leading-snug text-muted-foreground sm:text-xs md:text-sm">
             {label}
           </p>
-          <p className="mt-1 text-2xl font-bold md:text-3xl">{value}</p>
+          <p className="mt-1 break-words text-xl font-bold leading-tight tabular-nums sm:text-2xl md:text-3xl">
+            {value}
+          </p>
           {hint && (
-            <p className="text-xs text-muted-foreground md:text-sm">{hint}</p>
+            <p className="text-[11px] leading-snug text-muted-foreground sm:text-xs md:text-sm">
+              {hint}
+            </p>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <div className="rounded-xl bg-muted p-2 md:p-3">
-            <div className="h-5 w-5 md:h-6 md:w-6">{icon}</div>
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <div className="rounded-lg bg-muted p-1.5 sm:rounded-xl sm:p-2 md:p-3">
+            <div className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6">{icon}</div>
           </div>
           {href && (
             <ChevronRight
-              className="h-4 w-4 text-muted-foreground"
+              className="hidden h-4 w-4 text-muted-foreground min-[360px]:block"
               aria-hidden="true"
             />
           )}

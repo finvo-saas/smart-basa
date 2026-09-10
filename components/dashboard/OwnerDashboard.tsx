@@ -94,22 +94,23 @@ export function OwnerDashboard({ ownerId }: OwnerDashboardProps) {
 
       {focusSelected && (
         <Card className="border-primary/20 bg-primary/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
-              <span className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
+          <CardHeader className="space-y-3 p-3 pb-2 sm:p-6 sm:pb-2">
+            <CardTitle className="flex flex-col gap-2 text-base min-[360px]:flex-row min-[360px]:flex-wrap min-[360px]:items-center min-[360px]:justify-between">
+              <span className="flex min-w-0 items-center gap-2">
+                <Sparkles className="h-4 w-4 shrink-0 text-primary" />
                 Your business focus
               </span>
               <Button
                 size="sm"
                 variant="outline"
+                className="w-full shrink-0 min-[360px]:w-auto"
                 onClick={() => setManageFocusOpen(true)}
               >
                 Edit / expand
               </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-2 text-sm">
+          <CardContent className="flex flex-wrap gap-2 px-3 pb-3 text-sm sm:px-6 sm:pb-6">
             {orderedVerticals.map(v => (
               <Link
                 key={v}

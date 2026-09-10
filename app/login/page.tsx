@@ -1,13 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
 import { LanguageSwitcher } from '@/components/i18n'
+import { BrandIcon, BrandWordmark } from '@/components/layout/BrandLogo'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Card,
   CardContent,
@@ -15,8 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { loginWithPin, requestOtp, startLogin } from '@/lib/api/auth'
 import { applyAuthSession, nextPathAfterAuth } from '@/utils/auth'
+import { useTranslations } from 'next-intl'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 
 export default function Login() {
   const router = useRouter()
@@ -121,20 +122,42 @@ export default function Login() {
   const displayPhone = phone ? `+${phone.slice(0, 3)} ${phone.slice(3)}` : ''
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-3 dark:bg-gray-900 sm:p-4">
       <div className="w-full max-w-[480px]">
-        <div className="flex justify-end mb-4">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <Link
+            href="/"
+            className="flex min-w-0 items-center gap-2"
+            aria-label="SmartBasa home"
+          >
+            <BrandIcon className="h-9 w-9" priority />
+            <BrandWordmark className="h-4 sm:h-5" />
+          </Link>
           <LanguageSwitcher />
         </div>
 
-        <Card className="w-full">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl sm:text-3xl">{t('title')}</CardTitle>
-            <CardDescription className="text-sm sm:text-base">
-              {step === 'pin' ? t('pinSubtitle') : t('subtitle')}
-            </CardDescription>
+        <Card className="w-full overflow-hidden">
+          <CardHeader className="space-y-3 pb-4 text-center sm:space-y-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                SmartBasa
+              </p>
+              <CardTitle className="text-balance bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl">
+                {t('title')}
+              </CardTitle>
+              <div
+                className="mx-auto h-1 w-12 rounded-full bg-primary/80"
+                aria-hidden
+              />
+              <CardDescription className="mx-auto max-w-sm text-pretty text-sm leading-relaxed sm:text-base">
+                {t('brandDescription')}
+              </CardDescription>
+              <p className="text-sm font-medium text-muted-foreground">
+                {step === 'pin' ? t('pinSubtitle') : t('subtitle')}
+              </p>
+            </div>
             {step === 'pin' && (
-              <p className="text-sm font-medium text-foreground pt-2">
+              <p className="pt-1 text-sm font-medium text-foreground">
                 {displayPhone}
               </p>
             )}
@@ -144,36 +167,31 @@ export default function Login() {
               <form onSubmit={handlePhoneSubmit} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="phone">{t('phoneLabel')}</Label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <span className="text-muted-foreground text-lg font-medium">
-                        +880
-                      </span>
-                    </div>
-                    <Input
-                      type="tel"
-                      id="phone"
-                      value={displayPhone}
-                      onChange={handlePhoneChange}
-                      placeholder={t('phonePlaceholder')}
-                      className="pl-20 text-base sm:text-lg"
-                      maxLength={17}
-                      required
-                    />
-                  </div>
+                  <Input
+                    type="tel"
+                    id="phone"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={displayPhone}
+                    onChange={handlePhoneChange}
+                    placeholder={t('phonePlaceholder')}
+                    className="h-12 text-left text-base tracking-normal sm:h-14 sm:text-lg"
+                    maxLength={17}
+                    required
+                  />
                   {error && <p className="text-sm text-destructive">{error}</p>}
                 </div>
 
                 <Button
                   type="submit"
                   disabled={loading || phone.length !== 13}
-                  className="w-full text-base sm:text-lg h-12 sm:h-14"
+                  className="h-12 w-full text-base sm:h-14 sm:text-lg"
                   size="lg"
                 >
                   {loading ? tc('loading') : t('continue')}
                 </Button>
 
-                <p className="text-xs sm:text-sm text-center text-muted-foreground">
+                <p className="text-center text-xs text-muted-foreground sm:text-sm">
                   {t('terms')}{' '}
                   <Link href="/terms" className="text-link hover:underline">
                     {t('termsLink')}
@@ -208,7 +226,7 @@ export default function Login() {
                       setError('')
                     }}
                     placeholder={t('pinPlaceholder')}
-                    className="text-center text-2xl tracking-[0.4em] h-14"
+                    className="h-14 text-center text-2xl tracking-[0.4em]"
                     required
                   />
                   {error && <p className="text-sm text-destructive">{error}</p>}
@@ -217,7 +235,7 @@ export default function Login() {
                 <Button
                   type="submit"
                   disabled={loading || pin.length < 4}
-                  className="w-full text-base sm:text-lg h-12 sm:h-14"
+                  className="h-12 w-full text-base sm:h-14 sm:text-lg"
                   size="lg"
                 >
                   {loading ? tc('loading') : t('signIn')}
@@ -251,7 +269,7 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">
+        <p className="mt-6 text-center text-xs text-muted-foreground">
           {tc('copyright', { year: new Date().getFullYear() })}
         </p>
       </div>

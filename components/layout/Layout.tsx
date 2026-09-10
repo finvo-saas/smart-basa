@@ -35,7 +35,7 @@ export const Layout = ({ children, userRole }: LayoutProps) => {
 
   return (
     <MobileNavProvider userRole={currentRole}>
-      <div className="min-h-screen flex flex-col bg-background transition-colors duration-200">
+      <div className="flex min-h-screen min-w-0 flex-col overflow-x-clip bg-background transition-colors duration-200">
         <SkipToContent />
         <OfflineBanner />
         <AppHeader />
@@ -44,7 +44,11 @@ export const Layout = ({ children, userRole }: LayoutProps) => {
             <Navbar userRole={currentRole} />
           </div>
         )}
-        <main id="main-content" tabIndex={-1} className="flex-grow pb-16 md:pb-0 outline-none">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="min-w-0 flex-grow pb-16 outline-none md:pb-0"
+        >
           {children}
         </main>
         <div className="hidden md:block">

@@ -115,20 +115,20 @@ export function OwnerFocusDialog({
           if (isRequired && needsFocusSelection) e.preventDefault()
         }}
       >
-        <DialogHeader className="shrink-0 space-y-1.5 px-4 pb-2 pt-5 pr-12 text-left sm:px-6 sm:pt-6">
-          <DialogTitle>
+        <DialogHeader className="shrink-0 space-y-1.5 px-3 pb-2 pt-5 pr-10 text-left sm:px-6 sm:pt-6 sm:pr-12">
+          <DialogTitle className="text-balance text-lg sm:text-xl">
             {isRequired && needsFocusSelection
               ? 'What do you manage?'
               : 'Your business types'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-pretty text-xs sm:text-sm">
             SmartBasa supports mess, apartments, and hotels. Choose what you
             run so your dashboard and menus stay focused. You can add more
             later.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-2 sm:px-6">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-2 sm:px-6">
           {OWNER_VERTICALS.map(vertical => {
             const meta = OWNER_VERTICAL_META[vertical]
             const Icon = ICONS[vertical]
@@ -140,7 +140,7 @@ export function OwnerFocusDialog({
                 type="button"
                 onClick={() => toggle(vertical)}
                 className={cn(
-                  'w-full rounded-lg border p-4 text-left transition-colors',
+                  'w-full rounded-lg border p-3 text-left transition-colors sm:p-4',
                   active
                     ? 'border-primary bg-primary/5'
                     : 'hover:bg-muted/40',
@@ -185,7 +185,7 @@ export function OwnerFocusDialog({
           })}
         </div>
 
-        <DialogFooter className="shrink-0 gap-2 border-t px-4 py-3 sm:px-6">
+        <DialogFooter className="shrink-0 gap-2 border-t px-3 py-3 sm:px-6">
           {!isRequired || !needsFocusSelection ? (
             <Button
               type="button"

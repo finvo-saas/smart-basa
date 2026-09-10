@@ -22,13 +22,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Download } from 'lucide-react'
 import {
@@ -87,11 +80,12 @@ export function AttendanceReportDialog({
     let endDate = ''
 
     switch (type) {
-      case 'daily':
+      case 'daily': {
         const todayStr = formatISO(today, { representation: 'date' })
         startDate = todayStr
         endDate = todayStr
         break
+      }
       case 'weekly':
         startDate = formatISO(startOfWeek(today, { weekStartsOn: 6 }), {
           representation: 'date',
@@ -105,7 +99,6 @@ export function AttendanceReportDialog({
         endDate = formatISO(endOfMonth(today), { representation: 'date' })
         break
       case 'custom':
-        // Keep current dates or set to today
         startDate =
           form.getValues('startDate') ||
           formatISO(today, { representation: 'date' })
@@ -128,10 +121,12 @@ export function AttendanceReportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Generate Attendance Report</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-2xl gap-4 overflow-y-auto p-4 sm:max-h-[calc(100dvh-4rem)] sm:w-[calc(100%-2rem)] sm:p-6">
+        <DialogHeader className="pr-6 text-left sm:pr-8">
+          <DialogTitle className="text-balance text-base sm:text-lg">
+            Generate Attendance Report
+          </DialogTitle>
+          <DialogDescription className="text-pretty text-xs sm:text-sm">
             Generate attendance reports for analysis and record-keeping
           </DialogDescription>
         </DialogHeader>
@@ -139,10 +134,9 @@ export function AttendanceReportDialog({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-6"
+            className="space-y-5 sm:space-y-6"
           >
             <div className="space-y-4">
-              {/* Report Type */}
               <FormField
                 control={form.control}
                 name="reportType"
@@ -156,29 +150,29 @@ export function AttendanceReportDialog({
                           field.onChange(value)
                           handleReportTypeChange(value)
                         }}
-                        className="grid grid-cols-2 gap-4"
+                        className="grid grid-cols-2 gap-2 sm:gap-4"
                       >
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 rounded-md border p-2 sm:border-0 sm:p-0">
                           <RadioGroupItem value="daily" id="daily" />
-                          <label htmlFor="daily" className="cursor-pointer">
+                          <label htmlFor="daily" className="cursor-pointer text-sm">
                             Daily
                           </label>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 rounded-md border p-2 sm:border-0 sm:p-0">
                           <RadioGroupItem value="weekly" id="weekly" />
-                          <label htmlFor="weekly" className="cursor-pointer">
+                          <label htmlFor="weekly" className="cursor-pointer text-sm">
                             Weekly
                           </label>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 rounded-md border p-2 sm:border-0 sm:p-0">
                           <RadioGroupItem value="monthly" id="monthly" />
-                          <label htmlFor="monthly" className="cursor-pointer">
+                          <label htmlFor="monthly" className="cursor-pointer text-sm">
                             Monthly
                           </label>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 rounded-md border p-2 sm:border-0 sm:p-0">
                           <RadioGroupItem value="custom" id="custom" />
-                          <label htmlFor="custom" className="cursor-pointer">
+                          <label htmlFor="custom" className="cursor-pointer text-sm">
                             Custom
                           </label>
                         </div>
@@ -189,8 +183,7 @@ export function AttendanceReportDialog({
                 )}
               />
 
-              {/* Date Range */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 min-[380px]:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="startDate"
@@ -228,16 +221,17 @@ export function AttendanceReportDialog({
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
               <Button
                 type="button"
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => onOpenChange(false)}
               >
                 Cancel
               </Button>
-              <Button type="submit">
-                <Download className="h-4 w-4 mr-2" />
+              <Button type="submit" className="w-full sm:w-auto">
+                <Download className="mr-2 h-4 w-4" />
                 Generate Report
               </Button>
             </DialogFooter>

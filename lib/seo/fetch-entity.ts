@@ -5,6 +5,8 @@ import type { Property } from '@/types/property'
 const DEFAULT_API_BASE = 'http://127.0.0.1:8000/api/v1'
 
 function apiBase(): string {
+  const internal = process.env.API_INTERNAL_URL?.trim()
+  if (internal) return internal.replace(/\/$/, '')
   const raw = process.env.NEXT_PUBLIC_API_URL?.trim()
   if (!raw) return DEFAULT_API_BASE
   return raw.replace(/\/$/, '')
