@@ -32,7 +32,14 @@ const ROLE_RULES: RoleRule[] = [
   { prefix: '/admin', roles: ['admin'] },
 ]
 
+/** Mess sub-routes renters may open (view/accept rules for their home). */
+const MESS_RENTER_SHARED =
+  /^\/mess\/[^/]+\/rules(?:\/|$)/
+
 export function getRequiredRoles(pathname: string): UserRole[] | null {
+  if (MESS_RENTER_SHARED.test(pathname)) {
+    return ['owner', 'renter']
+  }
   for (const rule of ROLE_RULES) {
     const matches = rule.exact
       ? pathname === rule.prefix

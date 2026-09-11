@@ -352,7 +352,8 @@ export function OwnerPaymentsPanel() {
         <TabsContent value="claims" className="space-y-3">
           {claims.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No pending “I paid” claims.
+              No pending claims. When a renter pays cash or submits “I paid”,
+              confirm or reject here.
             </p>
           ) : (
             claims.map(claim => (

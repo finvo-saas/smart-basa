@@ -9,6 +9,7 @@
   "whatsappRenterHint": "Optional. Lets you message this renter on WhatsApp.",
   "sameAsPhone": "Same as phone number",
   "notSet": "Not added",
-  "messageOwner": "Hello, I found your listing on Smart Living.",
-  "messageRenter": "Hello from your Smart Living owner."
+  "messageOwner": "Hello — I'm interested in {property} on Smart Living.",
+  "messageRenter": "Hello from {property}. This is your property owner.",
+  "propertyFallback": "your property"
 }

@@ -10,6 +10,8 @@ export interface Renter {
   nid?: string
   address?: string
   joinedDate: string
+  photoUrl?: string | null
+  profilePhotoUrl?: string | null
 }
 
 export interface Flat {
@@ -23,6 +25,11 @@ export interface Flat {
   area?: number
   bedrooms?: number
   bathrooms?: number
+  /** Advance / security deposit on active tenancy */
+  deposit?: number | null
+  tenancyId?: string | null
+  /** Linked public listing (apartment marketplace) */
+  listingId?: string | null
 }
 
 export interface Building {
@@ -46,3 +53,21 @@ export interface Payment {
   paidDate?: string
   dueDate: string
 }
+
+export interface MyTenancy {
+  id: string
+  status: 'active' | 'ended' | 'pending' | string
+  startDate: string
+  endDate?: string | null
+  deposit?: number | null
+  notes?: string
+  flat: Flat
+  building: Pick<Building, 'id' | 'name' | 'address' | 'city'>
+  owner: {
+    id: string
+    name: string
+    phone: string
+    whatsapp?: string
+  }
+}
+

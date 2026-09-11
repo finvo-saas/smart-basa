@@ -582,7 +582,17 @@ export async function addRule(
 ): Promise<MessRule | undefined> {
   const result = await apiRequest<MessRule>(`/mess/${rule.messId}/rules/`, {
     method: 'POST',
-    body: rule,
+    body: {
+      title: rule.title,
+      description: rule.description,
+      category: rule.category,
+      severity: rule.severity,
+      penalty: rule.penalty || '',
+      status: rule.status || 'active',
+      requiresAcceptance: Boolean(rule.requiresAcceptance),
+      effectiveDate: rule.effectiveDate || null,
+      expiryDate: rule.expiryDate || null,
+    },
   })
   return result.ok ? result.data : undefined
 }
@@ -593,7 +603,30 @@ export async function updateRule(
 ): Promise<MessRule | undefined> {
   const result = await apiRequest<MessRule>(
     `/mess/${updates.messId}/rules/${ruleId}/`,
-    { method: 'PATCH', body: updates },
+    {
+      method: 'PATCH',
+      body: {
+        ...(updates.title !== undefined ? { title: updates.title } : {}),
+        ...(updates.description !== undefined
+          ? { description: updates.description }
+          : {}),
+        ...(updates.category !== undefined ? { category: updates.category } : {}),
+        ...(updates.severity !== undefined ? { severity: updates.severity } : {}),
+        ...(updates.penalty !== undefined
+          ? { penalty: updates.penalty || '' }
+          : {}),
+        ...(updates.status !== undefined ? { status: updates.status } : {}),
+        ...(updates.requiresAcceptance !== undefined
+          ? { requiresAcceptance: Boolean(updates.requiresAcceptance) }
+          : {}),
+        ...(updates.effectiveDate !== undefined
+          ? { effectiveDate: updates.effectiveDate || null }
+          : {}),
+        ...(updates.expiryDate !== undefined
+          ? { expiryDate: updates.expiryDate || null }
+          : {}),
+      },
+    },
   )
   return result.ok ? result.data : undefined
 }

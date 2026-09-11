@@ -3,6 +3,7 @@ import { getStoredUserId } from '@/utils/auth-tokens'
 import type { ApiResult } from './http'
 import type { AuthSession } from './auth'
 import { setAuthTokens } from '@/utils/auth-tokens'
+import { authStorageSet } from '@/utils/auth-storage'
 
 export async function requestPhoneChangeOtp(params: {
   newPhone: string
@@ -44,7 +45,7 @@ export async function requestPhoneChange(params: {
       userId: result.data.user.id,
     })
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('loginPhone', result.data.phoneDigits)
+      authStorageSet('loginPhone', result.data.phoneDigits)
     }
   }
   return result

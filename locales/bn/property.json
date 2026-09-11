@@ -31,7 +31,30 @@
     "contactOwner": "মালিকের সাথে যোগাযোগ",
     "addToCompare": "তুলনায় যোগ",
     "removeFromCompare": "তুলনা থেকে সরান",
-    "shareListing": "তালিকা শেয়ার"
+    "shareListing": "তালিকা শেয়ার",
+    "aboutPlace": "এই স্থান সম্পর্কে",
+    "facilities": "সুবিধা",
+    "nearby": "কাছাকাছি",
+    "negotiable": "আলোচনা সাপেক্ষে",
+    "serviceChargeLine": "+ {amount}/মাস সার্ভিস চার্জ",
+    "overview": {
+      "title": "ওভারভিউ",
+      "bedrooms": "শয়নকক্ষ",
+      "bathrooms": "বাথরুম",
+      "kitchens": "রান্নাঘর",
+      "livingRooms": "লিভিং রুম",
+      "balconies": "বারান্দা",
+      "size": "আয়তন",
+      "floor": "ফ্লোর",
+      "unit": "ইউনিট",
+      "furnishing": "ফার্নিশিং",
+      "facing": "মুখ",
+      "parking": "পার্কিং",
+      "availableFrom": "উপলব্ধ",
+      "serviceCharge": "সার্ভিস চার্জ",
+      "yes": "হ্যাঁ",
+      "no": "না"
+    }
   },
   "compare": {
     "title": "তালিকা তুলনা",

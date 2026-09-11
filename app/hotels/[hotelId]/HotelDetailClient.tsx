@@ -32,6 +32,7 @@ import {
 import { useMockQuery } from '@/hooks/useMockQuery'
 import { extractEntityId, hotelPath } from '@/lib/seo/slug'
 import { LoadingState } from '@/components/page'
+import { NearbyPOISection } from '@/components/map/NearbyPOISection'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -241,6 +242,8 @@ export function HotelDetailClient() {
 
             <CancellationPolicyCard policy={hotel.cancellationPolicy} />
 
+            <NearbyPOISection lat={hotel.latitude} lng={hotel.longitude} />
+
             {/* Reviews */}
             <Card>
               <CardHeader>
@@ -346,7 +349,10 @@ export function HotelDetailClient() {
                       className="w-full"
                       size="sm"
                       number={hotel.ownerWhatsapp}
-                      message={tContact('messageOwner')}
+                      message={tContact('messageOwner', {
+                        property:
+                          hotel.name?.trim() || tContact('propertyFallback'),
+                      })}
                       showNumber
                     />
                   </div>

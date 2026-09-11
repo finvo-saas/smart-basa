@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -71,9 +71,19 @@ type NoticeFormData = z.infer<typeof noticeSchema>
 interface CreateNoticeDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  messId: string
+  messId?: string
+  messes?: { id: string; name: string }[]
+  buildings?: { id: string; name: string }[]
+  defaultTargetId?: string
+  notice?: Notice | null
   onSubmit: (
-    data: NoticeFormData & { pdfFile?: File; imageFiles?: File[] }
+    data: NoticeFormData & {
+      pdfFile?: File
+      imageFiles?: File[]
+      targetType: 'mess' | 'building'
+      targetId: string
+      noticeId?: string
+    },
   ) => void
 }
 
@@ -91,13 +101,35 @@ export function CreateNoticeDialog({
   open,
   onOpenChange,
   messId,
+  messes = [],
+  buildings = [],
+  defaultTargetId,
+  notice = null,
   onSubmit,
 }: CreateNoticeDialogProps) {
+  const isEdit = Boolean(notice)
   const [pdfFile, setPdfFile] = useState<File | undefined>()
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [pdfPreview, setPdfPreview] = useState<string | undefined>()
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
 
+  const targetOptions = [
+    ...messes.map(m => ({
+      value: `mess:${m.id}`,
+      label: `Mess · ${m.name}`,
+    })),
+    ...buildings.map(b => ({
+      value: `building:${b.id}`,
+      label: `Building · ${b.name}`,
+    })),
+  ]
+  const initialTarget =
+    (defaultTargetId &&
+      targetOptions.find(o => o.value.endsWith(`:${defaultTargetId}`))
+        ?.value) ||
+    (messId ? `mess:${messId}` : targetOptions[0]?.value) ||
+    ''
+  const [targetValue, setTargetValue] = useState(initialTarget)
   const form = useForm<NoticeFormData>({
     resolver: zodResolver(noticeSchema),
     defaultValues: {
@@ -108,6 +140,41 @@ export function CreateNoticeDialog({
       expiryDate: undefined,
     },
   })
+
+  useEffect(() => {
+    if (!open) return
+    if (notice) {
+      const scopeType =
+        notice.scopeType === 'building' || notice.source === 'building'
+          ? 'building'
+          : 'mess'
+      const scopeId =
+        notice.scopeId || notice.buildingId || notice.messId || ''
+      setTargetValue(`${scopeType}:${scopeId}`)
+      form.reset({
+        title: notice.title,
+        content: notice.content,
+        priority: notice.priority,
+        category: (notice.category as NoticeFormData['category']) || 'general',
+        expiryDate: notice.expiryDate
+          ? new Date(notice.expiryDate)
+          : undefined,
+      })
+    } else {
+      setTargetValue(initialTarget)
+      form.reset({
+        title: '',
+        content: '',
+        priority: 'medium',
+        category: 'general',
+        expiryDate: undefined,
+      })
+    }
+    setPdfFile(undefined)
+    setImageFiles([])
+    setPdfPreview(undefined)
+    setImagePreviews([])
+  }, [open, notice, form, initialTarget])
 
   const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -125,18 +192,14 @@ export function CreateNoticeDialog({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const validImages: File[] = []
-
     for (const file of files) {
       const result = validateFile(file, 'image')
       if (result.valid) validImages.push(result.file)
     }
-
     if (validImages.length !== files.length) {
       toast.warning('Some files were skipped (invalid type or too large)')
     }
-
     setImageFiles(prev => [...prev, ...validImages])
-
     validImages.forEach(file => {
       const reader = new FileReader()
       reader.onload = ev => {
@@ -147,44 +210,60 @@ export function CreateNoticeDialog({
     e.target.value = ''
   }
 
-  const removePdf = () => {
-    setPdfFile(undefined)
-    setPdfPreview(undefined)
-  }
-
-  const removeImage = (index: number) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index))
-    setImagePreviews(prev => prev.filter((_, i) => i !== index))
-  }
-
-  const handleSubmit = (data: NoticeFormData) => {
+  const handleFormSubmit = (data: NoticeFormData) => {
+    const [targetType, targetId] = (targetValue || '').split(':') as [
+      'mess' | 'building',
+      string,
+    ]
+    if (!targetId) {
+      toast.error('Select a mess or building')
+      return
+    }
     onSubmit({
       ...data,
       pdfFile,
-      imageFiles,
+      imageFiles: imageFiles.length ? imageFiles : undefined,
+      targetType,
+      targetId,
+      noticeId: notice?.id,
     })
-    form.reset()
-    setPdfFile(undefined)
-    setImageFiles([])
-    setPdfPreview(undefined)
-    setImagePreviews([])
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Notice</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit Notice' : 'Create Notice'}</DialogTitle>
           <DialogDescription>
-            Create a new notice for your mess/hostel
+            {isEdit
+              ? 'Update notice content, priority, and expiry'
+              : 'Publish a notice to tenants in a mess or building'}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(handleSubmit)}
+            onSubmit={form.handleSubmit(handleFormSubmit)}
             className="space-y-4"
           >
+            {!isEdit && (
+              <div className="space-y-2">
+                <Label>Target</Label>
+                <Select value={targetValue} onValueChange={setTargetValue}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select mess or building" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {targetOptions.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="title"
@@ -207,7 +286,7 @@ export function CreateNoticeDialog({
                   <FormLabel>Content</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Enter notice content"
+                      placeholder="Write the notice details…"
                       className="min-h-[120px]"
                       {...field}
                     />
@@ -224,10 +303,7 @@ export function CreateNoticeDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Priority</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue />
@@ -250,19 +326,16 @@ export function CreateNoticeDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {categoryOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
+                        {categoryOptions.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -278,7 +351,7 @@ export function CreateNoticeDialog({
               name="expiryDate"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Expiry Date (Optional)</FormLabel>
+                  <FormLabel>Expiry date (optional)</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -286,13 +359,13 @@ export function CreateNoticeDialog({
                           variant="outline"
                           className={cn(
                             'w-full pl-3 text-left font-normal',
-                            !field.value && 'text-muted-foreground'
+                            !field.value && 'text-muted-foreground',
                           )}
                         >
                           {field.value ? (
                             format(field.value, 'PPP')
                           ) : (
-                            <span>Select expiry date</span>
+                            <span>Pick a date</span>
                           )}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
@@ -303,45 +376,37 @@ export function CreateNoticeDialog({
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={date => date < new Date()}
                         initialFocus
                       />
                     </PopoverContent>
                   </Popover>
                   <FormDescription>
-                    Notices will be automatically hidden after this date
+                    Leave empty for notices that stay active indefinitely
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* PDF Upload */}
             <div className="space-y-2">
-              <Label>PDF Document (Optional)</Label>
-              {!pdfFile ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="file"
-                    accept={getAcceptAttribute('pdf')}
-                    onChange={handlePdfChange}
-                    className="flex-1"
-                  />
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 rounded-lg border p-3">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{pdfFile.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(pdfFile.size / 1024).toFixed(2)} KB
-                    </p>
-                  </div>
+              <Label>PDF attachment (optional)</Label>
+              <Input
+                type="file"
+                accept={getAcceptAttribute('pdf')}
+                onChange={handlePdfChange}
+              />
+              {pdfPreview && (
+                <div className="flex items-center gap-2 rounded border p-2 text-sm">
+                  <FileText className="h-4 w-4" />
+                  <span className="flex-1 truncate">{pdfFile?.name}</span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={removePdf}
+                    onClick={() => {
+                      setPdfFile(undefined)
+                      setPdfPreview(undefined)
+                    }}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -349,62 +414,56 @@ export function CreateNoticeDialog({
               )}
             </div>
 
-            {/* Image Upload */}
             <div className="space-y-2">
-              <Label>Images (Optional)</Label>
+              <Label>Images (optional)</Label>
               <Input
                 type="file"
                 accept={getAcceptAttribute('image')}
                 multiple
                 onChange={handleImageChange}
               />
-              <p className="text-sm text-muted-foreground">
-                You can upload multiple images (JPG, PNG, etc.)
-              </p>
-
               {imagePreviews.length > 0 && (
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                  {imagePreviews.map((preview, index) => (
+                <div className="flex flex-wrap gap-2">
+                  {imagePreviews.map((src, i) => (
                     <div
-                      key={index}
-                      className="relative rounded-lg border overflow-hidden"
+                      key={i}
+                      className="relative h-16 w-16 overflow-hidden rounded border"
                     >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-32 object-cover"
+                        src={src}
+                        alt=""
+                        className="h-full w-full object-cover"
                       />
-                      <Button
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-1 right-1 h-6 w-6 bg-background/80 hover:bg-background"
-                        onClick={() => removeImage(index)}
+                        className="absolute right-0 top-0 bg-background/80 p-0.5"
+                        onClick={() => {
+                          setImageFiles(prev => prev.filter((_, idx) => idx !== i))
+                          setImagePreviews(prev =>
+                            prev.filter((_, idx) => idx !== i),
+                          )
+                        }}
                       >
                         <X className="h-3 w-3" />
-                      </Button>
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <div className="flex justify-end gap-2 pt-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  form.reset()
-                  setPdfFile(undefined)
-                  setImageFiles([])
-                  setPdfPreview(undefined)
-                  setImagePreviews([])
-                  onOpenChange(false)
-                }}
+                onClick={() => onOpenChange(false)}
               >
                 Cancel
               </Button>
-              <Button type="submit">Create Notice</Button>
+              <Button type="submit">
+                {isEdit ? 'Save changes' : 'Publish notice'}
+              </Button>
             </div>
           </form>
         </Form>

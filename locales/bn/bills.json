@@ -55,9 +55,13 @@
     "inactive": "নিষ্ক্রিয়",
     "items": "{count, plural, one {#টি আইটেম} other {#টি আইটেম}}",
     "noDescription": "কোনো বিবরণ নেই",
-    "propertyLabel": "সম্পত্তি:",
-    "typeLabel": "ধরন:",
-    "itemsLabel": "আইটেম:"
+    "propertyLabel": "সম্পত্তি",
+    "typeLabel": "ধরন",
+    "itemsLabel": "আইটেম",
+    "created": "টেমপ্লেট তৈরি হয়েছে",
+    "updated": "টেমপ্লেট আপডেট হয়েছে",
+    "deleted": "টেমপ্লেট মুছে ফেলা হয়েছে",
+    "saveFailed": "টেমপ্লেট সেভ করা যায়নি"
   },
   "meterReadings": {
     "title": "মিটার রিডিং",
@@ -69,7 +73,10 @@
     "electricity": "বিদ্যুৎ:",
     "gas": "গ্যাস:",
     "water": "পানি:",
-    "units": "{count} ইউনিট"
+    "units": "{count} ইউনিট",
+    "created": "মিটার রিডিং সেভ হয়েছে",
+    "updated": "মিটার রিডিং আপডেট হয়েছে",
+    "saveFailed": "মিটার রিডিং সেভ করা যায়নি"
   },
   "automation": {
     "title": "বিল স্বয়ংক্রিয়করণ",
@@ -81,10 +88,17 @@
     "schedule": "সময়সূচি",
     "templateLabel": "টেমপ্লেট:",
     "scheduleLabel": "সময়সূচি:",
-    "dayOfMonth": "দিন {day}"
+    "dayOfMonth": "দিন {day}",
+    "created": "স্বয়ংক্রিয় নিয়ম তৈরি হয়েছে",
+    "updated": "স্বয়ংক্রিয় নিয়ম আপডেট হয়েছে",
+    "deleted": "স্বয়ংক্রিয় নিয়ম মুছে ফেলা হয়েছে",
+    "activated": "নিয়ম সক্রিয় হয়েছে",
+    "deactivated": "নিয়ম নিষ্ক্রিয় হয়েছে",
+    "saveFailed": "স্বয়ংক্রিয় নিয়ম সেভ করা যায়নি"
   },
   "misc": {
     "unknownProperty": "অজানা সম্পত্তি",
+    "unknownMess": "অজানা মেস",
     "unknownTenant": "অজানা ভাড়াটে",
     "notAvailable": "প্রযোজ্য নয়",
     "flatPrefix": "ফ্ল্যাট {number}"
@@ -108,5 +122,24 @@
     "property": "সম্পত্তি",
     "flat": "ফ্ল্যাট {number}",
     "amount": "পরিমাণ"
+  },
+  "whatsappShare": {
+    "send": "WhatsApp-এ পাঠান",
+    "preparing": "প্রস্তুত হচ্ছে…",
+    "opened": "WhatsApp খোলা হয়েছে — বিল PDF শেয়ার করতে মেসেজ পাঠান",
+    "failed": "WhatsApp শেয়ার প্রস্তুত করা যায়নি",
+    "noNumber": "এই ভাড়াটের WhatsApp নম্বর পাওয়া যায়নি",
+    "lastShared": "শেষ শেয়ার {date}"
+  },
+  "dueRemind": {
+    "whatsapp": "বাকি মনে করান (WhatsApp)",
+    "sms": "বাকি মনে করান (SMS)",
+    "preparing": "প্রস্তুত হচ্ছে…",
+    "sendingSms": "SMS পাঠানো হচ্ছে…",
+    "openedWhatsapp": "WhatsApp খোলা হয়েছে — বাকি মনে করানোর মেসেজ পাঠান",
+    "smsSent": "বাকি মনে করানোর SMS পাঠানো হয়েছে",
+    "smsQueued": "বাকি মনে করানোর SMS কিউ হয়েছে",
+    "failed": "বাকি মনে করানো যায়নি",
+    "noNumber": "এই ভাড়াটের WhatsApp নম্বর পাওয়া যায়নি"
   }
 }

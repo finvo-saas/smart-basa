@@ -1,4 +1,4 @@
-import type { Building, Flat, Renter } from '@/types/building'
+import type { Building, Flat, MyTenancy, Renter } from '@/types/building'
 import type { Mess } from '@/types/mess'
 import type { Floor, FloorFormData, FloorStats } from '@/types/floor'
 import { apiRequest } from './client'
@@ -40,6 +40,22 @@ export async function createBuilding(data: {
   })
 }
 
+export async function patchBuilding(
+  buildingId: string,
+  data: Partial<{
+    name: string
+    address: string
+    city: string
+    totalFloors: number
+    totalFlats: number
+  }>,
+): Promise<ApiResult<Building>> {
+  return apiRequest<Building>(`/buildings/${buildingId}/`, {
+    method: 'PATCH',
+    body: data,
+  })
+}
+
 export async function fetchFlatsByBuilding(
   buildingId: string,
 ): Promise<ApiResult<Flat[]>> {
@@ -68,11 +84,44 @@ export async function createFlat(data: {
 
 export async function patchFlat(
   flatId: string,
-  data: Partial<Flat>,
+  data: Partial<{
+    flatNumber: string
+    floor: number
+    rent: number
+    status: Flat['status']
+    area?: number
+    bedrooms?: number
+    bathrooms?: number
+  }>,
 ): Promise<ApiResult<Flat>> {
   return apiRequest<Flat>(`/flats/${flatId}/`, {
     method: 'PATCH',
     body: data,
+  })
+}
+
+export async function deleteFlat(flatId: string): Promise<ApiResult<boolean>> {
+  const result = await apiRequest<null>(`/flats/${flatId}/`, {
+    method: 'DELETE',
+  })
+  if (!result.ok) return result
+  return { ok: true, data: true }
+}
+
+export async function ensureFlatListing(
+  flatId: string,
+  publish = true,
+): Promise<
+  ApiResult<{
+    listingId: string
+    bookUrl: string
+    flat: Flat
+    listing: import('@/types/property').Property
+  }>
+> {
+  return apiRequest(`/flats/${flatId}/ensure-listing/`, {
+    method: 'POST',
+    body: { publish },
   })
 }
 
@@ -86,16 +135,63 @@ export async function assignRenter(
     nid?: string
     address?: string
     joinedDate?: string
+    deposit?: number
+    notes?: string
   },
 ): Promise<ApiResult<Flat>> {
-  return apiRequest<Flat>(`/flats/${flatId}/assign-renter/`, {
-    method: 'POST',
+  const result = await apiRequest<{ flat: Flat; renter: Renter }>(
+    `/flats/${flatId}/assign-renter/`,
+    {
+      method: 'POST',
+      body: data,
+    },
+  )
+  if (!result.ok) return result
+  return { ok: true, data: result.data.flat }
+}
+
+export async function patchFlatTenancy(
+  flatId: string,
+  data: Partial<{
+    name: string
+    phone: string
+    whatsapp: string
+    email: string
+    nid: string
+    address: string
+    joinedDate: string
+    deposit: number
+    notes: string
+  }>,
+): Promise<ApiResult<Flat>> {
+  return apiRequest<Flat>(`/flats/${flatId}/tenancy/`, {
+    method: 'PATCH',
     body: data,
   })
 }
 
-export async function vacateFlat(flatId: string): Promise<ApiResult<Flat>> {
-  return apiRequest<Flat>(`/flats/${flatId}/vacate/`, { method: 'POST' })
+export async function vacateFlat(
+  flatId: string,
+  data?: {
+    advanceNote?: string
+    depositReturned?: number
+  },
+): Promise<ApiResult<Flat>> {
+  return apiRequest<Flat>(`/flats/${flatId}/vacate/`, {
+    method: 'POST',
+    body: data ?? {},
+  })
+}
+
+export async function fetchMyTenancies(
+  status: 'active' | 'ended' | 'all' = 'active',
+): Promise<ApiResult<MyTenancy[]>> {
+  if (!hasAuthTokens()) return { ok: true, data: [] }
+  const path =
+    status === 'active'
+      ? '/tenancies/mine/'
+      : `/tenancies/mine/?status=${encodeURIComponent(status)}`
+  return apiRequest<MyTenancy[]>(path)
 }
 
 export async function fetchRenters(): Promise<ApiResult<Renter[]>> {

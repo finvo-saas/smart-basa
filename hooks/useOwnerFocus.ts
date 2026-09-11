@@ -15,7 +15,7 @@ import {
   syncUserDisplay,
 } from '@/utils/auth'
 import {
-  OWNER_VERTICALS,
+  normalizeOwnerVerticals,
   type OwnerVertical,
 } from '@/lib/owner-focus'
 
@@ -80,17 +80,17 @@ export function useOwnerFocus() {
       enabledVerticals: OwnerVertical[]
       primaryFocus: OwnerVertical
     }): Promise<AuthUser | null> => {
-      const unique = OWNER_VERTICALS.filter(v =>
-        input.enabledVerticals.includes(v),
+      // Product rule: exactly one business type at a time.
+      const unique = normalizeOwnerVerticals(
+        input.enabledVerticals,
+        input.primaryFocus,
       )
       if (unique.length === 0) return null
-      const primary = unique.includes(input.primaryFocus)
-        ? input.primaryFocus
-        : unique[0]
+      const primary = unique[0]
       setSaving(true)
       try {
         const result = await updateCurrentUser({
-          ownerEnabledVerticals: unique,
+          ownerEnabledVerticals: [primary],
           ownerPrimaryFocus: primary,
           ownerFocusSelected: true,
         })

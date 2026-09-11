@@ -41,6 +41,13 @@
       "buildingAge": "ভবনের বয়স (সর্বোচ্চ: {value} বছর)",
       "buildingAgeAny": "যেকোনো",
       "floorLevel": "তলা (সর্বোচ্চ: {value})",
+      "apartmentSection": "অ্যাপার্টমেন্ট লেআউট",
+      "bedrooms": "বেডরুম (সর্বনিম্ন)",
+      "bathrooms": "বাথরুম (সর্বনিম্ন)",
+      "bedroomsMin": "{count}+ বেড",
+      "bathroomsMin": "{count}+ বাথ",
+      "sizeSqftMin": "সর্বনিম্ন আকার (বর্গফুট): {value}",
+      "tenantType": "পছন্দসই",
       "locationSearch": "অবস্থান অনুসন্ধান",
       "searchRadius": "অনুসন্ধান ব্যাসার্ধ:",
       "filterByDistance": "দূরত্ব অনুযায়ী ফিল্টার",
@@ -53,6 +60,12 @@
       "selectSeatType": "সিটের ধরন নির্বাচন",
       "selectMealPlan": "খাবার পরিকল্পনা নির্বাচন",
       "selectFurnishing": "আসবাবপত্র নির্বাচন"
+    },
+    "tenantTypes": {
+      "any": "যে কেউ",
+      "family": "পরিবার",
+      "bachelor": "ব্যাচেলর",
+      "office": "অফিস"
     },
     "ai": {
       "placeholder": "বাংলা বা ইংরেজিতে বলুন কেমন বাসা দরকার…",

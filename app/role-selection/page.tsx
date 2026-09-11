@@ -20,8 +20,11 @@ import { selectRole } from '@/lib/api/auth'
 import {
   applyAuthSession,
   getAvailableRolesFromSession,
+  getLoginPhone,
   getPendingAdminRole,
   hasCompleteSession,
+  isOtpVerified,
+  needsPinSetup,
 } from '@/utils/auth'
 import { hasAuthTokens } from '@/utils/auth-tokens'
 
@@ -47,17 +50,17 @@ export default function RoleSelection() {
       return
     }
 
-    const otpOk = sessionStorage.getItem('otpVerified') === 'true'
+    const otpOk = isOtpVerified()
     if (!otpOk || !hasAuthTokens()) {
       router.push('/otp-verify')
       return
     }
-    if (sessionStorage.getItem('needsPinSetup') === 'true') {
+    if (needsPinSetup()) {
       router.replace('/set-pin')
       return
     }
 
-    setLoginPhone(sessionStorage.getItem('loginPhone'))
+    setLoginPhone(getLoginPhone())
     setAvailableRoles(getAvailableRolesFromSession())
     const pending = getPendingAdminRole()
     if (pending) {

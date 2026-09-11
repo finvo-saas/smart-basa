@@ -438,6 +438,7 @@ export default function MessMembersPage() {
                           <MemberActionsMenu
                             member={member}
                             messId={messId}
+                            propertyName={mess.name}
                             onEdit={openEdit}
                             onVacateSeat={handleVacateSeat}
                             onToggleActive={handleToggleActive}
@@ -495,6 +496,7 @@ export default function MessMembersPage() {
                       <MemberActionsMenu
                         member={member}
                         messId={messId}
+                        propertyName={mess.name}
                         onEdit={openEdit}
                         onVacateSeat={handleVacateSeat}
                         onToggleActive={handleToggleActive}

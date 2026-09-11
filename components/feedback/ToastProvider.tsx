@@ -12,6 +12,7 @@ export function ToastProvider() {
       closeButton
       position="top-center"
       theme={theme === 'dark' ? 'dark' : 'light'}
+      style={{ zIndex: 100000 }}
       toastOptions={{
         classNames: {
           toast:

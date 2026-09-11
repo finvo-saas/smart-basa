@@ -20,8 +20,12 @@ const CACHE_MAX_ENTRIES = 500
 const pathCache = new Map<string, { path: string; expires: number }>()
 
 function apiBase(): string {
+  const internal = process.env.API_INTERNAL_URL?.trim()
+  if (internal) return internal.replace(/\/$/, '')
   const raw = process.env.NEXT_PUBLIC_API_URL?.trim()
-  return raw ? raw.replace(/\/$/, '') : DEFAULT_API_BASE
+  // Middleware runs in Node — relative `/api/v1` cannot be fetched.
+  if (raw && !raw.startsWith('/')) return raw.replace(/\/$/, '')
+  return DEFAULT_API_BASE
 }
 
 function cacheGet(key: string): string | null {

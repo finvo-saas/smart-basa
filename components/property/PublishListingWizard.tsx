@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -27,6 +26,10 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  RichTextEditor,
+  plainTextFromHtml,
+} from '@/components/ui/rich-text-editor'
 import { Loader2, CheckCircle2 } from 'lucide-react'
 import type { Property, PropertyListingInput } from '@/types/property'
 import { cn } from '@/lib/utils'
@@ -62,7 +65,11 @@ const schema = z.object({
   city: z.string().min(2, 'City is required'),
   area: z.string().min(2, 'Area is required'),
   address: z.string().min(5, 'Address is required'),
-  description: z.string().min(20, 'Write at least 20 characters'),
+  description: z
+    .string()
+    .refine(v => plainTextFromHtml(v).length >= 20, {
+      message: 'Write at least 20 characters',
+    }),
   gender: z.enum(['male', 'female', 'mixed']).optional().nullable(),
   seatType: z.enum(['single', 'shared']).optional().nullable(),
   mealIncluded: z.boolean().optional(),
@@ -73,6 +80,35 @@ const schema = z.object({
   security: z.boolean().optional(),
   furnishing: z
     .enum(['furnished', 'unfurnished', 'semi-furnished'])
+    .optional()
+    .nullable(),
+  bedrooms: z.coerce.number().min(0).max(20).optional().nullable(),
+  bathrooms: z.coerce.number().min(0).max(20).optional().nullable(),
+  kitchens: z.coerce.number().min(0).max(10).optional().nullable(),
+  livingRooms: z.coerce.number().min(0).max(10).optional().nullable(),
+  balconies: z.coerce.number().min(0).max(10).optional().nullable(),
+  sizeSqft: z.coerce.number().min(0).optional().nullable(),
+  floorLevel: z.coerce.number().min(0).optional().nullable(),
+  unitNumber: z.string().max(40).optional(),
+  propertyFace: z
+    .enum([
+      'north',
+      'south',
+      'east',
+      'west',
+      'north-east',
+      'north-west',
+      'south-east',
+      'south-west',
+    ])
+    .optional()
+    .nullable(),
+  serviceCharge: z.coerce.number().min(0).optional().nullable(),
+  parkingCount: z.coerce.number().min(0).max(20).optional().nullable(),
+  availableFrom: z.string().optional().nullable(),
+  rentNegotiable: z.boolean().optional(),
+  tenantType: z
+    .enum(['family', 'bachelor', 'office', 'any'])
     .optional()
     .nullable(),
   imageUrl: z.union([z.string().url(), z.literal('')]).optional(),
@@ -122,6 +158,20 @@ export function PublishListingWizard({
       parking: initial?.parking || false,
       security: initial?.security ?? true,
       furnishing: initial?.furnishing || null,
+      bedrooms: initial?.bedrooms ?? undefined,
+      bathrooms: initial?.bathrooms ?? undefined,
+      kitchens: initial?.kitchens ?? undefined,
+      livingRooms: initial?.livingRooms ?? undefined,
+      balconies: initial?.balconies ?? undefined,
+      sizeSqft: initial?.sizeSqft ?? undefined,
+      floorLevel: initial?.floorLevel ?? undefined,
+      unitNumber: initial?.unitNumber || '',
+      propertyFace: initial?.propertyFace || null,
+      serviceCharge: initial?.serviceCharge ?? undefined,
+      parkingCount: initial?.parkingCount ?? undefined,
+      availableFrom: initial?.availableFrom || '',
+      rentNegotiable: initial?.rentNegotiable || false,
+      tenantType: initial?.tenantType || null,
       imageUrl: initial?.images?.[0] || '',
       facilities: initial?.facilities || ['WiFi', 'Security'],
       nearbyFacilities: initial?.nearbyFacilities || [],
@@ -208,9 +258,37 @@ export function PublishListingWizard({
         mealCost: values.mealCost,
         depositMonths: values.depositMonths,
         instantBook: values.instantBook,
-        parking: values.parking,
+        parking:
+          values.type === 'apartment' && values.parkingCount != null
+            ? values.parkingCount > 0
+            : values.parking,
         security: values.security,
         furnishing: values.furnishing || null,
+        bedrooms: values.type === 'apartment' ? values.bedrooms ?? null : null,
+        bathrooms: values.type === 'apartment' ? values.bathrooms ?? null : null,
+        kitchens: values.type === 'apartment' ? values.kitchens ?? null : null,
+        livingRooms:
+          values.type === 'apartment' ? values.livingRooms ?? null : null,
+        balconies: values.type === 'apartment' ? values.balconies ?? null : null,
+        sizeSqft: values.type === 'apartment' ? values.sizeSqft ?? null : null,
+        floorLevel:
+          values.type === 'apartment' ? values.floorLevel ?? null : null,
+        unitNumber:
+          values.type === 'apartment' ? values.unitNumber?.trim() || '' : '',
+        propertyFace:
+          values.type === 'apartment' ? values.propertyFace || null : null,
+        serviceCharge:
+          values.type === 'apartment' ? values.serviceCharge ?? null : null,
+        parkingCount:
+          values.type === 'apartment' ? values.parkingCount ?? null : null,
+        availableFrom:
+          values.type === 'apartment' && values.availableFrom
+            ? values.availableFrom
+            : null,
+        rentNegotiable:
+          values.type === 'apartment' ? !!values.rentNegotiable : false,
+        tenantType:
+          values.type === 'apartment' ? values.tenantType || 'any' : null,
         images,
         videos,
         nearbyFacilities: values.nearbyFacilities,
@@ -372,14 +450,18 @@ export function PublishListingWizard({
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Description</FormLabel>
+                        <FormLabel>Flat details</FormLabel>
                         <FormControl>
-                          <Textarea
-                            rows={5}
-                            placeholder="Describe rooms, rules, meals, nearby universities…"
-                            {...field}
+                          <RichTextEditor
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Describe rooms, furnishing, rules, nearby landmarks…"
                           />
                         </FormControl>
+                        <FormDescription>
+                          Use the toolbar for headings, bold, and lists — shown
+                          on the public listing page.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -437,6 +519,361 @@ export function PublishListingWizard({
                         )}
                       />
                     </div>
+                  )}
+
+                  {propertyType === 'apartment' && (
+                    <>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <FormField
+                          control={form.control}
+                          name="bedrooms"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Bedrooms (BHK)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  placeholder="2"
+                                  value={field.value ?? ''}
+                                  onChange={e => {
+                                    const v = e.target.value
+                                    field.onChange(
+                                      v === '' ? null : parseInt(v, 10),
+                                    )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="bathrooms"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Bathrooms</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  placeholder="2"
+                                  value={field.value ?? ''}
+                                  onChange={e => {
+                                    const v = e.target.value
+                                    field.onChange(
+                                      v === '' ? null : parseInt(v, 10),
+                                    )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <FormField
+                          control={form.control}
+                          name="sizeSqft"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Size (sqft)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  placeholder="1100"
+                                  value={field.value ?? ''}
+                                  onChange={e => {
+                                    const v = e.target.value
+                                    field.onChange(
+                                      v === '' ? null : parseInt(v, 10),
+                                    )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="floorLevel"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Floor</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  placeholder="3"
+                                  value={field.value ?? ''}
+                                  onChange={e => {
+                                    const v = e.target.value
+                                    field.onChange(
+                                      v === '' ? null : parseInt(v, 10),
+                                    )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        <FormField
+                          control={form.control}
+                          name="kitchens"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Kitchens</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  placeholder="1"
+                                  value={field.value ?? ''}
+                                  onChange={e => {
+                                    const v = e.target.value
+                                    field.onChange(
+                                      v === '' ? null : parseInt(v, 10),
+                                    )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="livingRooms"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Living rooms</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  placeholder="1"
+                                  value={field.value ?? ''}
+                                  onChange={e => {
+                                    const v = e.target.value
+                                    field.onChange(
+                                      v === '' ? null : parseInt(v, 10),
+                                    )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="balconies"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Balconies</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  placeholder="1"
+                                  value={field.value ?? ''}
+                                  onChange={e => {
+                                    const v = e.target.value
+                                    field.onChange(
+                                      v === '' ? null : parseInt(v, 10),
+                                    )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <FormField
+                          control={form.control}
+                          name="unitNumber"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Unit / flat no.</FormLabel>
+                              <FormControl>
+                                <Input placeholder="A-5" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="propertyFace"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Facing</FormLabel>
+                              <Select
+                                value={field.value || undefined}
+                                onValueChange={field.onChange}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="north">North</SelectItem>
+                                  <SelectItem value="south">South</SelectItem>
+                                  <SelectItem value="east">East</SelectItem>
+                                  <SelectItem value="west">West</SelectItem>
+                                  <SelectItem value="north-east">
+                                    North-East
+                                  </SelectItem>
+                                  <SelectItem value="north-west">
+                                    North-West
+                                  </SelectItem>
+                                  <SelectItem value="south-east">
+                                    South-East
+                                  </SelectItem>
+                                  <SelectItem value="south-west">
+                                    South-West
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <FormField
+                          control={form.control}
+                          name="serviceCharge"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Service charge (৳/mo)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  placeholder="5000"
+                                  value={field.value ?? ''}
+                                  onChange={e => {
+                                    const v = e.target.value
+                                    field.onChange(
+                                      v === '' ? null : parseInt(v, 10),
+                                    )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="parkingCount"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Parking spaces</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  placeholder="1"
+                                  value={field.value ?? ''}
+                                  onChange={e => {
+                                    const v = e.target.value
+                                    field.onChange(
+                                      v === '' ? null : parseInt(v, 10),
+                                    )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <FormField
+                          control={form.control}
+                          name="availableFrom"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Available from</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="date"
+                                  value={field.value || ''}
+                                  onChange={e =>
+                                    field.onChange(e.target.value || null)
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="rentNegotiable"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                              <div>
+                                <FormLabel>Rent negotiable</FormLabel>
+                                <FormDescription>
+                                  Show as negotiable on the listing
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={!!field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="tenantType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Preferred for</FormLabel>
+                            <Select
+                              value={field.value || 'any'}
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="family">Family</SelectItem>
+                                <SelectItem value="bachelor">
+                                  Bachelor
+                                </SelectItem>
+                                <SelectItem value="office">Office</SelectItem>
+                                <SelectItem value="any">Anyone</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              Matches how Dhaka renters search (family /
+                              bachelor).
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
                   )}
 
                   <div className="grid gap-4 sm:grid-cols-2">

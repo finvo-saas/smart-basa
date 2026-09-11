@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useMockQuery } from '@/hooks/useMockQuery'
+import { ApproveBookingFlatDialog } from '@/components/booking/ApproveBookingFlatDialog'
 import {
   fetchBookingsForOwner,
   patchBookingStatus,
@@ -49,6 +50,7 @@ export default function OwnerBookingsPage() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [showDetail, setShowDetail] = useState(false)
   const [showRejectDialog, setShowRejectDialog] = useState(false)
+  const [showApproveFlat, setShowApproveFlat] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
@@ -73,15 +75,38 @@ export default function OwnerBookingsPage() {
     refetch()
   }
 
-  const handleApprove = async (bookingId: string) => {
+  const requestApprove = (bookingId: string) => {
+    const booking =
+      (bookings || []).find(b => b.id === bookingId) || selectedBooking
+    if (!booking) return
+    setSelectedBooking(booking)
+    if (booking.propertyType === 'apartment') {
+      setShowDetail(false)
+      setShowApproveFlat(true)
+      return
+    }
+    void handleApprove(bookingId)
+  }
+
+  const handleApprove = async (bookingId: string, flatId?: string) => {
     setActionError(null)
-    const result = await patchBookingStatus(bookingId, 'approved')
+    const result = await patchBookingStatus(
+      bookingId,
+      'approved',
+      undefined,
+      flatId,
+    )
     if (!result.ok) {
       setActionError(result.error)
       return
     }
     setShowDetail(false)
+    setShowApproveFlat(false)
     refresh()
+  }
+
+  const handleApproveWithFlat = async (booking: Booking, flatId: string) => {
+    await handleApprove(booking.id, flatId)
   }
 
   const handleRejectConfirm = async () => {
@@ -227,7 +252,7 @@ export default function OwnerBookingsPage() {
                     key={booking.id}
                     booking={booking}
                     showActions
-                    onApprove={handleApprove}
+                    onApprove={requestApprove}
                     onReject={id => {
                       const b = pendingBookings.find(x => x.id === id)
                       if (b) {
@@ -267,7 +292,7 @@ export default function OwnerBookingsPage() {
                   key={booking.id}
                   booking={booking}
                   showActions={booking.status === 'pending'}
-                  onApprove={handleApprove}
+                  onApprove={requestApprove}
                   onReject={id => {
                     const b = ownerBookings.find(x => x.id === id)
                     if (b) {
@@ -290,13 +315,20 @@ export default function OwnerBookingsPage() {
           open={showDetail}
           onOpenChange={setShowDetail}
           role="owner"
-          onApprove={b => handleApprove(b.id)}
+          onApprove={b => requestApprove(b.id)}
           onReject={b => {
             setSelectedBooking(b)
             setShowDetail(false)
             setShowRejectDialog(true)
           }}
           onComplete={handleComplete}
+        />
+
+        <ApproveBookingFlatDialog
+          booking={selectedBooking}
+          open={showApproveFlat}
+          onOpenChange={setShowApproveFlat}
+          onConfirm={handleApproveWithFlat}
         />
 
         <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>

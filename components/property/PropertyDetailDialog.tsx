@@ -287,7 +287,10 @@ export function PropertyDetailDialog({
                 <WhatsAppButton
                   size="sm"
                   number={property.ownerWhatsapp}
-                  message={tContact('messageOwner')}
+                  message={tContact('messageOwner', {
+                    property:
+                      property.name?.trim() || tContact('propertyFallback'),
+                  })}
                 />
               </div>
             </div>

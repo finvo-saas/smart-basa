@@ -10,7 +10,13 @@ import {
   type ReactNode,
 } from 'react'
 import { usePathname } from 'next/navigation'
-import { getStoredRole, isLoggedIn } from '@/utils/auth'
+import {
+  getDisplayName,
+  getStoredRole,
+  isLoggedIn,
+  isOtpVerified,
+} from '@/utils/auth'
+import { AUTH_SESSION_CHANGED } from '@/lib/auth/session-events'
 import type { UserRole } from '@/types'
 import { MobileNavDrawer } from './MobileNavDrawer'
 
@@ -48,20 +54,30 @@ export function MobileNavProvider({
   const [isVerified, setIsVerified] = useState(false)
   const [loggedIn, setLoggedIn] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
+  const syncUser = useCallback(() => {
     const logged = isLoggedIn()
     setLoggedIn(logged)
     const role = userRoleProp || getStoredRole() || 'renter'
     setUserRole(role)
     if (logged) {
-      const phone = sessionStorage.getItem('loginPhone')
-      if (phone) {
-        setUserName('User ' + phone.slice(-4))
-        setIsVerified(true)
-      }
+      setUserName(getDisplayName())
+      setIsVerified(isOtpVerified())
+    } else {
+      setUserName('Guest')
+      setIsVerified(false)
     }
   }, [userRoleProp])
+
+  useEffect(() => {
+    setMounted(true)
+    syncUser()
+    window.addEventListener(AUTH_SESSION_CHANGED, syncUser)
+    window.addEventListener('profile-updated', syncUser)
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED, syncUser)
+      window.removeEventListener('profile-updated', syncUser)
+    }
+  }, [syncUser])
 
   useEffect(() => {
     setIsOpen(false)
@@ -72,7 +88,7 @@ export function MobileNavProvider({
 
   const value = useMemo(
     () => ({ isOpen, openMenu, closeMenu, setIsOpen }),
-    [isOpen, openMenu, closeMenu]
+    [isOpen, openMenu, closeMenu],
   )
 
   return (

@@ -130,7 +130,9 @@ export function MessPublicCard({ mess }: MessPublicCardProps) {
             size="icon"
             className="col-span-2 w-full min-[360px]:col-span-1 min-[360px]:w-auto"
             number={mess.ownerWhatsapp}
-            message={tContact('messageOwner')}
+            message={tContact('messageOwner', {
+              property: mess.name?.trim() || tContact('propertyFallback'),
+            })}
             label=""
             aria-label={tContact('whatsapp')}
           />

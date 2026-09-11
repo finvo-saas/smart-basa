@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -85,6 +86,7 @@ export function BookingDetailDialog({
   onReject,
   onComplete,
 }: BookingDetailDialogProps) {
+  const tContact = useTranslations('contact')
   if (!booking) return null
 
   const isOwner = role === 'owner'
@@ -93,6 +95,11 @@ export function BookingDetailDialog({
   const contactWhatsapp = isOwner
     ? booking.renterWhatsapp
     : booking.ownerWhatsapp
+  const propertyLabel =
+    booking.propertyName?.trim() || tContact('propertyFallback')
+  const whatsappMessage = isOwner
+    ? tContact('messageRenter', { property: propertyLabel })
+    : tContact('messageOwner', { property: propertyLabel })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -159,6 +166,7 @@ export function BookingDetailDialog({
               size="sm"
               className="w-fit"
               number={contactWhatsapp}
+              message={whatsappMessage}
               showNumber
             />
           </div>

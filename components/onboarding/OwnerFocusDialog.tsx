@@ -27,7 +27,7 @@ const ICONS: Record<OwnerVertical, typeof Building2> = {
 }
 
 type OwnerFocusDialogProps = {
-  /** Force open for “expand business” even if focus already selected. */
+  /** Force open to change business type even if focus already selected. */
   open?: boolean
   onOpenChange?: (open: boolean) => void
   mode?: 'required' | 'manage'
@@ -47,8 +47,7 @@ export function OwnerFocusDialog({
     focusSelected,
   } = useOwnerFocus()
 
-  const [selected, setSelected] = useState<OwnerVertical[]>([])
-  const [primary, setPrimary] = useState<OwnerVertical | ''>('')
+  const [selected, setSelected] = useState<OwnerVertical | ''>('')
 
   const isRequired = mode === 'required'
   const open =
@@ -58,43 +57,32 @@ export function OwnerFocusDialog({
 
   useEffect(() => {
     if (!open) return
-    if (focusSelected && enabledVerticals.length) {
-      setSelected(enabledVerticals)
-      setPrimary(primaryFocus || enabledVerticals[0])
-    } else if (!selected.length) {
-      setSelected(['mess'])
-      setPrimary('mess')
+    if (focusSelected && (primaryFocus || enabledVerticals[0])) {
+      setSelected(
+        (primaryFocus && enabledVerticals.includes(primaryFocus)
+          ? primaryFocus
+          : enabledVerticals[0]) || 'mess',
+      )
+    } else if (!selected) {
+      setSelected('mess')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once when opening
   }, [open])
 
-  const toggle = (vertical: OwnerVertical) => {
-    setSelected(prev => {
-      const next = prev.includes(vertical)
-        ? prev.filter(v => v !== vertical)
-        : [...prev, vertical]
-      if (next.length === 0) return prev
-      if (!next.includes(primary as OwnerVertical)) {
-        setPrimary(next[0])
-      }
-      return next
-    })
-  }
-
   const handleSave = async () => {
-    if (selected.length === 0 || !primary) {
-      toast.error('Select at least one business type.')
+    if (!selected) {
+      toast.error('Select your business type.')
       return
     }
     const user = await saveFocus({
-      enabledVerticals: selected,
-      primaryFocus: primary as OwnerVertical,
+      enabledVerticals: [selected],
+      primaryFocus: selected,
     })
     if (!user) {
-      toast.error('Could not save your business focus. Try again.')
+      toast.error('Could not save your business type. Try again.')
       return
     }
-    toast.success('Business focus saved')
+    toast.success('Business type saved')
     onOpenChange?.(false)
   }
 
@@ -119,12 +107,13 @@ export function OwnerFocusDialog({
           <DialogTitle className="text-balance text-lg sm:text-xl">
             {isRequired && needsFocusSelection
               ? 'What do you manage?'
-              : 'Your business types'}
+              : 'Your business type'}
           </DialogTitle>
           <DialogDescription className="text-pretty text-xs sm:text-sm">
-            SmartBasa supports mess, apartments, and hotels. Choose what you
-            run so your dashboard and menus stay focused. You can add more
-            later.
+            SmartBasa supports mess, apartments, and hotels. Choose{' '}
+            <span className="font-medium text-foreground">one</span> business
+            type so your dashboard and menus stay focused. You can switch later
+            from your account menu.
           </DialogDescription>
         </DialogHeader>
 
@@ -132,13 +121,12 @@ export function OwnerFocusDialog({
           {OWNER_VERTICALS.map(vertical => {
             const meta = OWNER_VERTICAL_META[vertical]
             const Icon = ICONS[vertical]
-            const active = selected.includes(vertical)
-            const isPrimary = primary === vertical
+            const active = selected === vertical
             return (
               <button
                 key={vertical}
                 type="button"
-                onClick={() => toggle(vertical)}
+                onClick={() => setSelected(vertical)}
                 className={cn(
                   'w-full rounded-lg border p-3 text-left transition-colors sm:p-4',
                   active
@@ -164,20 +152,6 @@ export function OwnerFocusDialog({
                     <p className="text-sm text-muted-foreground">
                       {meta.description}
                     </p>
-                    {active && (
-                      <label
-                        className="mt-2 flex items-center gap-2 text-xs"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <input
-                          type="radio"
-                          name="owner-primary-focus"
-                          checked={isPrimary}
-                          onChange={() => setPrimary(vertical)}
-                        />
-                        Primary home screen
-                      </label>
-                    )}
                   </div>
                 </div>
               </button>
@@ -199,7 +173,7 @@ export function OwnerFocusDialog({
           <Button
             type="button"
             className="w-full sm:w-auto"
-            disabled={saving || selected.length === 0}
+            disabled={saving || !selected}
             onClick={() => void handleSave()}
           >
             {saving ? 'Saving…' : 'Continue'}

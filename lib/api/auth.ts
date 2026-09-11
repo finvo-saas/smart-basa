@@ -2,7 +2,7 @@ import { apiRequest } from './client'
 import type { ApiResult } from './http'
 import type { UserRole } from '@/types'
 import type { AdminRole } from '@/types/admin'
-import { setAuthTokens, clearAuthTokens } from '@/utils/auth-tokens'
+import { setAuthTokens, clearAuthTokens, getRefreshToken } from '@/utils/auth-tokens'
 
 export type AuthUser = {
   id: string
@@ -17,6 +17,8 @@ export type AuthUser = {
   isPhoneVerified: boolean
   hasPin: boolean
   profilePhotoUrl: string | null
+  /** Absolute media URL (same as profilePhotoUrl when present). */
+  profilePhoto?: string | null
   locale: string
   heartbeatSmsOptIn?: boolean
   pushOptIn?: boolean
@@ -151,10 +153,11 @@ export async function setPin(params: {
 }
 
 export async function refreshSession(): Promise<ApiResult<AuthSession>> {
+  const refresh = getRefreshToken()
   const result = await apiRequest<AuthSession>('/auth/token/refresh/', {
     method: 'POST',
     auth: false,
-    body: {},
+    body: refresh ? { refresh } : {},
   })
   if (result.ok) {
     persistTokens(result.data)

@@ -57,11 +57,34 @@ export default function MessHisabPage() {
   const [depositAmount, setDepositAmount] = useState('')
   const [depositMethod, setDepositMethod] = useState('Cash')
   const [depositTrx, setDepositTrx] = useState('')
+  const [mealOffStudentId, setMealOffStudentId] = useState('')
+  const [mealOffStart, setMealOffStart] = useState(today)
+  const [mealOffEnd, setMealOffEnd] = useState(today)
+  const [mealOffReason, setMealOffReason] = useState('')
+  const [mealOffBreakfast, setMealOffBreakfast] = useState(true)
+  const [mealOffLunch, setMealOffLunch] = useState(true)
+  const [mealOffDinner, setMealOffDinner] = useState(true)
+  const [mealOffSubmitting, setMealOffSubmitting] = useState(false)
+  const [mealOffFormOpen, setMealOffFormOpen] = useState(false)
   const [waterAvail, setWaterAvail] = useState('24_7')
   const [powerAvail, setPowerAvail] = useState('24_7')
+  const [waterSource, setWaterSource] = useState('wasa')
+  const [loadShedding, setLoadShedding] = useState('rare')
+  const [meterType, setMeterType] = useState('shared')
+  const [billSplitMethod, setBillSplitMethod] = useState('equal')
+  const [hasFilter, setHasFilter] = useState(false)
+  const [separateDrinkingWater, setSeparateDrinkingWater] = useState(false)
+  const [hasWaterBackup, setHasWaterBackup] = useState(false)
   const [hasIps, setHasIps] = useState(false)
   const [hasGenerator, setHasGenerator] = useState(false)
-  const [hasFilter, setHasFilter] = useState(false)
+  const [liftBackup, setLiftBackup] = useState(false)
+  const [commonAreaBackup, setCommonAreaBackup] = useState(false)
+  const [emergencyLight, setEmergencyLight] = useState(false)
+  const [showManualUtilities, setShowManualUtilities] = useState(false)
+  const [waterSourceManual, setWaterSourceManual] = useState('')
+  const [manualPairs, setManualPairs] = useState<{ key: string; value: string }[]>([
+    { key: '', value: '' },
+  ])
 
   const loadMess = useCallback(() => fetchMessById(messId), [messId])
   const loadGrid = useCallback(() => fetchHisabGrid(messId, date), [messId, date])
@@ -114,9 +137,41 @@ export default function MessHisabPage() {
     const e = mess.utilities?.electricity?.profile
     if (w?.availability) setWaterAvail(w.availability)
     if (e?.availability) setPowerAvail(e.availability)
+    if (w?.source) {
+      const known = ['wasa', 'deep_tube_well', 'both', 'other']
+      if (known.includes(w.source)) {
+        setWaterSource(w.source)
+        setWaterSourceManual('')
+      } else {
+        setWaterSource('other')
+        setWaterSourceManual(w.source)
+      }
+    }
+    if (e?.loadSheddingLevel) setLoadShedding(e.loadSheddingLevel)
+    if (e?.meterType) setMeterType(e.meterType)
+    if (e?.billSplitMethod) setBillSplitMethod(e.billSplitMethod)
     setHasFilter(Boolean(w?.hasFilter))
+    setSeparateDrinkingWater(Boolean(w?.separateDrinkingWater))
+    setHasWaterBackup(Boolean(w?.hasBackup))
     setHasIps(Boolean(e?.hasIps))
     setHasGenerator(Boolean(e?.hasGenerator))
+    setLiftBackup(Boolean(e?.liftBackup))
+    setCommonAreaBackup(Boolean(e?.commonAreaBackup))
+    setEmergencyLight(Boolean(e?.emergencyLight))
+    const manualRaw =
+      w?.manual && typeof w.manual === 'object' && !Array.isArray(w.manual)
+        ? w.manual
+        : e?.manual && typeof e.manual === 'object' && !Array.isArray(e.manual)
+          ? e.manual
+          : null
+    const pairs = manualRaw
+      ? Object.entries(manualRaw).map(([key, value]) => ({
+          key,
+          value: value == null ? '' : String(value),
+        }))
+      : []
+    setManualPairs(pairs.length ? pairs : [{ key: '', value: '' }])
+    setShowManualUtilities(pairs.length > 0)
   }, [mess])
 
   const updateCell = (studentId: string, field: keyof HisabGridRow, value: number) => {
@@ -195,16 +250,44 @@ export default function MessHisabPage() {
   }
 
   const handleSaveUtilities = async () => {
+    const sourceValue =
+      waterSource === 'other'
+        ? waterSourceManual.trim() || 'other'
+        : waterSource
+    const manual: Record<string, string> = {}
+    if (showManualUtilities) {
+      for (const pair of manualPairs) {
+        const key = pair.key.trim()
+        if (!key) continue
+        manual[key] = pair.value
+      }
+    }
+
+    const waterProfile: Record<string, unknown> = {
+      availability: waterAvail,
+      source: sourceValue,
+      hasFilter,
+      separateDrinkingWater,
+      hasBackup: hasWaterBackup,
+      manual,
+    }
+
+    const electricityProfile: Record<string, unknown> = {
+      availability: powerAvail,
+      loadSheddingLevel: loadShedding,
+      hasIps,
+      hasGenerator,
+      liftBackup,
+      commonAreaBackup,
+      emergencyLight,
+      meterType,
+      billSplitMethod,
+      manual,
+    }
+
     const result = await updateMessUtilities(messId, {
-      waterProfile: {
-        availability: waterAvail,
-        hasFilter,
-      },
-      electricityProfile: {
-        availability: powerAvail,
-        hasIps,
-        hasGenerator,
-      },
+      waterProfile,
+      electricityProfile,
     })
     if (!result.ok) {
       toast.error(result.error)
@@ -232,6 +315,64 @@ export default function MessHisabPage() {
     toast.success(t('depositAdded'))
     refetchDep()
     refetchMonth()
+  }
+
+  const handleMealOffRequest = async () => {
+    if (isOwner && !mealOffStudentId) {
+      toast.error(t('selectMemberRequired'))
+      return
+    }
+    if (!mealOffStart || !mealOffEnd) {
+      toast.error(t('mealOffDatesRequired'))
+      return
+    }
+    if (mealOffEnd < mealOffStart) {
+      toast.error(t('mealOffEndBeforeStart'))
+      return
+    }
+    if (!mealOffBreakfast && !mealOffLunch && !mealOffDinner) {
+      toast.error(t('mealOffMealsRequired'))
+      return
+    }
+
+    setMealOffSubmitting(true)
+    const result = await createMealOffRequest(messId, {
+      startDate: mealOffStart,
+      endDate: mealOffEnd,
+      reason: mealOffReason.trim() || undefined,
+      studentId: isOwner ? mealOffStudentId : undefined,
+      meals: {
+        breakfast: mealOffBreakfast,
+        lunch: mealOffLunch,
+        dinner: mealOffDinner,
+      },
+    })
+    setMealOffSubmitting(false)
+
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+
+    setMealOffReason('')
+    setMealOffStart(today)
+    setMealOffEnd(today)
+    setMealOffBreakfast(true)
+    setMealOffLunch(true)
+    setMealOffDinner(true)
+    if (isOwner) setMealOffStudentId('')
+    setMealOffFormOpen(false)
+    toast.success(t('mealOffCreated'))
+    refetchOff()
+  }
+
+  const formatMealOffMeals = (meals: Record<string, boolean> | undefined) => {
+    if (!meals) return t('meals')
+    const parts: string[] = []
+    if (meals.breakfast) parts.push(t('breakfast'))
+    if (meals.lunch) parts.push(t('lunch'))
+    if (meals.dinner) parts.push(t('dinner'))
+    return parts.length ? parts.join(' · ') : t('meals')
   }
 
   if (messLoading && !mess) {
@@ -628,42 +769,138 @@ export default function MessHisabPage() {
 
           <TabsContent value="mealOff" className="space-y-4">
             <Card>
-              <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
-                <CardTitle className="text-lg">{t('mealOffTitle')}</CardTitle>
+              <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+                <div className="min-w-0 space-y-1">
+                  <CardTitle className="text-lg">{t('mealOffTitle')}</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    {isOwner ? t('mealOffOwnerHint') : t('mealOffMemberHint')}
+                  </p>
+                </div>
                 <Button
                   size="sm"
-                  variant="outline"
-                  onClick={async () => {
-                    const start = today
-                    const result = await createMealOffRequest(messId, {
-                      startDate: start,
-                      endDate: start,
-                      reason: 'Meal off',
-                      studentId: isOwner ? students?.[0]?.id : undefined,
-                    })
-                    if (!result.ok) {
-                      toast.error(result.error)
-                      return
-                    }
-                    toast.success(t('mealOffCreated'))
-                    refetchOff()
-                  }}
+                  variant={mealOffFormOpen ? 'outline' : 'default'}
+                  onClick={() => setMealOffFormOpen(open => !open)}
                 >
-                  {t('requestMealOff')}
+                  {mealOffFormOpen ? t('cancelRequest') : t('requestMealOff')}
                 </Button>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {mealOffFormOpen ? (
+                <div className="grid grid-cols-1 gap-3 rounded-lg border bg-muted/20 p-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {isOwner ? (
+                    <label className="block text-sm sm:col-span-2 lg:col-span-1">
+                      <span className="mb-1 block font-medium">{t('member')}</span>
+                      <select
+                        className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                        value={mealOffStudentId}
+                        onChange={e => setMealOffStudentId(e.target.value)}
+                      >
+                        <option value="">{t('selectMember')}</option>
+                        {(students || []).map(s => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  <label className="block text-sm">
+                    <span className="mb-1 block font-medium">{t('startDate')}</span>
+                    <Input
+                      type="date"
+                      value={mealOffStart}
+                      onChange={e => {
+                        const next = e.target.value
+                        setMealOffStart(next)
+                        if (mealOffEnd < next) setMealOffEnd(next)
+                      }}
+                    />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="mb-1 block font-medium">{t('endDate')}</span>
+                    <Input
+                      type="date"
+                      value={mealOffEnd}
+                      min={mealOffStart}
+                      onChange={e => setMealOffEnd(e.target.value)}
+                    />
+                  </label>
+                  <label className="block text-sm sm:col-span-2 lg:col-span-3">
+                    <span className="mb-1 block font-medium">{t('reason')}</span>
+                    <Input
+                      value={mealOffReason}
+                      onChange={e => setMealOffReason(e.target.value)}
+                      placeholder={t('reasonPlaceholder')}
+                    />
+                  </label>
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <p className="mb-2 text-sm font-medium">{t('mealsToSkip')}</p>
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border"
+                          checked={mealOffBreakfast}
+                          onChange={e => setMealOffBreakfast(e.target.checked)}
+                        />
+                        {t('breakfast')}
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border"
+                          checked={mealOffLunch}
+                          onChange={e => setMealOffLunch(e.target.checked)}
+                        />
+                        {t('lunch')}
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border"
+                          checked={mealOffDinner}
+                          onChange={e => setMealOffDinner(e.target.checked)}
+                        />
+                        {t('dinner')}
+                      </label>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
+                    <Button
+                      onClick={handleMealOffRequest}
+                      disabled={mealOffSubmitting}
+                    >
+                      {mealOffSubmitting ? t('submitting') : t('submitMealOff')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={mealOffSubmitting}
+                      onClick={() => setMealOffFormOpen(false)}
+                    >
+                      {t('cancelRequest')}
+                    </Button>
+                  </div>
+                </div>
+                ) : null}
+
                 <ul className="space-y-2">
                   {(offs || []).map(req => (
                     <li
                       key={req.id}
                       className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm"
                     >
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-medium">
-                          {req.studentName} · {req.startDate} → {req.endDate}
+                          {req.studentName} · {req.startDate}
+                          {req.endDate !== req.startDate
+                            ? ` → ${req.endDate}`
+                            : ''}
                         </p>
-                        <p className="text-muted-foreground">{req.reason || '—'}</p>
+                        <p className="text-muted-foreground">
+                          {formatMealOffMeals(req.meals)}
+                          {req.reason ? ` — ${req.reason}` : ''}
+                        </p>
                         <Badge className="mt-1" variant="outline">
                           {req.status}
                         </Badge>
@@ -679,7 +916,11 @@ export default function MessHisabPage() {
                                 true,
                               )
                               if (!r.ok) toast.error(r.error)
-                              else refetchOff()
+                              else {
+                                toast.success(t('mealOffApproved'))
+                                refetchOff()
+                                refetchGrid()
+                              }
                             }}
                           >
                             {t('approve')}
@@ -694,7 +935,10 @@ export default function MessHisabPage() {
                                 false,
                               )
                               if (!r.ok) toast.error(r.error)
-                              else refetchOff()
+                              else {
+                                toast.success(t('mealOffRejected'))
+                                refetchOff()
+                              }
                             }}
                           >
                             {t('reject')}
@@ -745,61 +989,282 @@ export default function MessHisabPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">{t('utilitiesTitle')}</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    {t('utilitiesHint')}
+                  </p>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex flex-wrap gap-3">
-                    <label className="text-sm">
-                      {t('waterAvail')}
-                      <select
-                        className="mt-1 block h-10 rounded-md border px-2"
-                        value={waterAvail}
-                        onChange={e => setWaterAvail(e.target.value)}
-                      >
-                        <option value="24_7">24/7</option>
-                        <option value="limited">Limited</option>
-                        <option value="frequent_problem">Frequent problem</option>
-                      </select>
-                    </label>
-                    <label className="text-sm">
-                      {t('powerAvail')}
-                      <select
-                        className="mt-1 block h-10 rounded-md border px-2"
-                        value={powerAvail}
-                        onChange={e => setPowerAvail(e.target.value)}
-                      >
-                        <option value="24_7">24/7</option>
-                        <option value="limited">Limited</option>
-                        <option value="frequent_problem">Frequent problem</option>
-                      </select>
-                    </label>
+                <CardContent className="space-y-5">
+                  <div className="space-y-3 rounded-lg border p-3">
+                    <p className="text-sm font-medium">{t('waterSection')}</p>
+                    <div className="flex flex-wrap gap-3">
+                      <label className="text-sm">
+                        {t('waterAvail')}
+                        <select
+                          className="mt-1 block h-10 rounded-md border px-2"
+                          value={waterAvail}
+                          onChange={e => setWaterAvail(e.target.value)}
+                        >
+                          <option value="24_7">24/7</option>
+                          <option value="limited">{t('availLimited')}</option>
+                          <option value="frequent_problem">
+                            {t('availFrequent')}
+                          </option>
+                        </select>
+                      </label>
+                      <label className="text-sm">
+                        {t('waterSource')}
+                        <select
+                          className="mt-1 block h-10 rounded-md border px-2"
+                          value={waterSource}
+                          onChange={e => setWaterSource(e.target.value)}
+                        >
+                          <option value="wasa">WASA</option>
+                          <option value="deep_tube_well">
+                            {t('sourceDeepTube')}
+                          </option>
+                          <option value="both">{t('sourceBoth')}</option>
+                          <option value="other">{t('sourceOther')}</option>
+                        </select>
+                      </label>
+                    </div>
+                    {waterSource === 'other' ? (
+                      <label className="block text-sm">
+                        {t('waterSourceManual')}
+                        <Input
+                          className="mt-1"
+                          value={waterSourceManual}
+                          onChange={e => setWaterSourceManual(e.target.value)}
+                          placeholder={t('waterSourceManualPlaceholder')}
+                        />
+                      </label>
+                    ) : null}
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={hasFilter}
+                          onChange={e => setHasFilter(e.target.checked)}
+                        />
+                        {t('hasFilter')}
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={separateDrinkingWater}
+                          onChange={e =>
+                            setSeparateDrinkingWater(e.target.checked)
+                          }
+                        />
+                        {t('separateDrinkingWater')}
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={hasWaterBackup}
+                          onChange={e => setHasWaterBackup(e.target.checked)}
+                        />
+                        {t('hasWaterBackup')}
+                      </label>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={hasFilter}
-                        onChange={e => setHasFilter(e.target.checked)}
-                      />
-                      {t('hasFilter')}
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={hasIps}
-                        onChange={e => setHasIps(e.target.checked)}
-                      />
-                      IPS
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={hasGenerator}
-                        onChange={e => setHasGenerator(e.target.checked)}
-                      />
-                      {t('hasGenerator')}
-                    </label>
+
+                  <div className="space-y-3 rounded-lg border p-3">
+                    <p className="text-sm font-medium">{t('powerSection')}</p>
+                    <div className="flex flex-wrap gap-3">
+                      <label className="text-sm">
+                        {t('powerAvail')}
+                        <select
+                          className="mt-1 block h-10 rounded-md border px-2"
+                          value={powerAvail}
+                          onChange={e => setPowerAvail(e.target.value)}
+                        >
+                          <option value="24_7">24/7</option>
+                          <option value="limited">{t('availLimited')}</option>
+                          <option value="frequent_problem">
+                            {t('availFrequent')}
+                          </option>
+                        </select>
+                      </label>
+                      <label className="text-sm">
+                        {t('loadShedding')}
+                        <select
+                          className="mt-1 block h-10 rounded-md border px-2"
+                          value={loadShedding}
+                          onChange={e => setLoadShedding(e.target.value)}
+                        >
+                          <option value="rare">{t('sheddingRare')}</option>
+                          <option value="moderate">
+                            {t('sheddingModerate')}
+                          </option>
+                          <option value="frequent">
+                            {t('sheddingFrequent')}
+                          </option>
+                        </select>
+                      </label>
+                      <label className="text-sm">
+                        {t('meterType')}
+                        <select
+                          className="mt-1 block h-10 rounded-md border px-2"
+                          value={meterType}
+                          onChange={e => setMeterType(e.target.value)}
+                        >
+                          <option value="shared">{t('meterShared')}</option>
+                          <option value="prepaid">{t('meterPrepaid')}</option>
+                          <option value="separate">
+                            {t('meterSeparate')}
+                          </option>
+                        </select>
+                      </label>
+                      <label className="text-sm">
+                        {t('billSplitMethod')}
+                        <select
+                          className="mt-1 block h-10 rounded-md border px-2"
+                          value={billSplitMethod}
+                          onChange={e => setBillSplitMethod(e.target.value)}
+                        >
+                          <option value="equal">{t('splitEqual')}</option>
+                          <option value="by_room">{t('splitByRoom')}</option>
+                          <option value="by_seat">{t('splitBySeat')}</option>
+                          <option value="owner_pays">
+                            {t('splitOwnerPays')}
+                          </option>
+                        </select>
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={hasIps}
+                          onChange={e => setHasIps(e.target.checked)}
+                        />
+                        IPS
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={hasGenerator}
+                          onChange={e => setHasGenerator(e.target.checked)}
+                        />
+                        {t('hasGenerator')}
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={commonAreaBackup}
+                          onChange={e => setCommonAreaBackup(e.target.checked)}
+                        />
+                        {t('commonAreaBackup')}
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={liftBackup}
+                          onChange={e => setLiftBackup(e.target.checked)}
+                        />
+                        {t('liftBackup')}
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={emergencyLight}
+                          onChange={e => setEmergencyLight(e.target.checked)}
+                        />
+                        {t('emergencyLight')}
+                      </label>
+                    </div>
                   </div>
-                  <Button onClick={handleSaveUtilities}>{t('saveUtilities')}</Button>
+
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={showManualUtilities}
+                      onChange={e => {
+                        const on = e.target.checked
+                        setShowManualUtilities(on)
+                        if (on && manualPairs.length === 0) {
+                          setManualPairs([{ key: '', value: '' }])
+                        }
+                      }}
+                    />
+                    {t('manualEntry')}
+                  </label>
+                  {showManualUtilities ? (
+                    <div className="space-y-3 rounded-lg border border-dashed p-3">
+                      <p className="text-xs text-muted-foreground">
+                        {t('manualEntryHint')}
+                      </p>
+                      <div className="space-y-2">
+                        {manualPairs.map((pair, index) => (
+                          <div
+                            key={`manual-${index}`}
+                            className="flex flex-wrap items-center gap-2"
+                          >
+                            <Input
+                              className="min-w-[8rem] flex-1"
+                              value={pair.key}
+                              onChange={e => {
+                                const next = [...manualPairs]
+                                next[index] = {
+                                  ...next[index],
+                                  key: e.target.value,
+                                }
+                                setManualPairs(next)
+                              }}
+                              placeholder={t('manualKeyPlaceholder')}
+                            />
+                            <Input
+                              className="min-w-[8rem] flex-1"
+                              value={pair.value}
+                              onChange={e => {
+                                const next = [...manualPairs]
+                                next[index] = {
+                                  ...next[index],
+                                  value: e.target.value,
+                                }
+                                setManualPairs(next)
+                              }}
+                              placeholder={t('manualValuePlaceholder')}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const next = manualPairs.filter(
+                                  (_, i) => i !== index,
+                                )
+                                setManualPairs(
+                                  next.length
+                                    ? next
+                                    : [{ key: '', value: '' }],
+                                )
+                              }}
+                            >
+                              {t('manualRemove')}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() =>
+                          setManualPairs(prev => [
+                            ...prev,
+                            { key: '', value: '' },
+                          ])
+                        }
+                      >
+                        {t('manualAddRow')}
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  <Button onClick={handleSaveUtilities}>
+                    {t('saveUtilities')}
+                  </Button>
                   {mess.utilities ? (
                     <p className="text-sm text-muted-foreground">
                       {t('scoresPreview', {

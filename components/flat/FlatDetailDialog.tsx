@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { WhatsAppButton } from '@/components/contact/WhatsAppButton'
 import {
@@ -31,52 +31,35 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  Pencil,
+  LogOut,
+  Trash2,
+  Megaphone,
+  ExternalLink,
 } from 'lucide-react'
-import type { Flat, Payment } from '@/types/building'
+import type { Flat } from '@/types/building'
+import type { Bill } from '@/types/bill'
 import { RenterHistoryDialog } from '@/components/renter/RenterHistoryDialog'
 import { FlatStatusBadge } from '@/components/shared/FlatStatusBadge'
+import { fetchBillsForOwner } from '@/lib/api/bills'
 import { cn } from '@/lib/utils'
+import { useAppFormat } from '@/hooks/useAppFormat'
 
 interface FlatDetailDialogProps {
   flat: Flat | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onAssignRenter: (flat: Flat) => void
+  onEditRenter?: (flat: Flat) => void
   onGenerateBill: (flat: Flat) => void
+  onEditFlat?: (flat: Flat) => void
+  onVacateFlat?: (flat: Flat) => void
+  onDeleteFlat?: (flat: Flat) => void
+  onPublishListing?: (flat: Flat) => void
+  publishingListing?: boolean
+  /** Building / property display name for the WhatsApp greeting. */
+  propertyName?: string
 }
-
-// Mock payment history
-const mockPayments: Payment[] = [
-  {
-    id: 'p1',
-    flatId: 'f1',
-    amount: 12000,
-    month: 'January',
-    year: 2024,
-    status: 'paid',
-    paidDate: '2024-01-05',
-    dueDate: '2024-01-01',
-  },
-  {
-    id: 'p2',
-    flatId: 'f1',
-    amount: 12000,
-    month: 'February',
-    year: 2024,
-    status: 'paid',
-    paidDate: '2024-02-03',
-    dueDate: '2024-02-01',
-  },
-  {
-    id: 'p3',
-    flatId: 'f1',
-    amount: 12000,
-    month: 'March',
-    year: 2024,
-    status: 'pending',
-    dueDate: '2024-03-01',
-  },
-]
 
 const paymentStatusConfig = {
   paid: {
@@ -84,83 +67,143 @@ const paymentStatusConfig = {
     className: 'text-green-600 dark:text-green-400',
     label: 'Paid',
   },
-  pending: {
+  unpaid: {
     icon: Clock,
     className: 'text-yellow-600 dark:text-yellow-400',
-    label: 'Pending',
+    label: 'Unpaid',
   },
   overdue: {
     icon: XCircle,
     className: 'text-red-600 dark:text-red-400',
     label: 'Overdue',
   },
-}
+} as const
 
 export function FlatDetailDialog({
   flat,
   open,
   onOpenChange,
   onAssignRenter,
+  onEditRenter,
   onGenerateBill,
+  onEditFlat,
+  onVacateFlat,
+  onDeleteFlat,
+  onPublishListing,
+  publishingListing,
+  propertyName,
 }: FlatDetailDialogProps) {
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false)
+  const [bills, setBills] = useState<Bill[]>([])
+  const [billsLoading, setBillsLoading] = useState(false)
+  const t = useTranslations('portfolio.flats')
   const tContact = useTranslations('contact')
+  const { formatCurrency } = useAppFormat()
+
+  const loadBills = useCallback(async () => {
+    if (!flat || !open) return
+    setBillsLoading(true)
+    const result = await fetchBillsForOwner()
+    if (result.ok) {
+      const forFlat = result.data
+        .filter(
+          b =>
+            b.propertyId === flat.buildingId &&
+            (b.flatNumber || '').trim() === flat.flatNumber.trim(),
+        )
+        .sort((a, b) => {
+          if (a.year !== b.year) return b.year - a.year
+          return String(b.month).localeCompare(String(a.month))
+        })
+        .slice(0, 12)
+      setBills(forFlat)
+    } else {
+      setBills([])
+    }
+    setBillsLoading(false)
+  }, [flat, open])
+
+  useEffect(() => {
+    void loadBills()
+  }, [loadBills])
+
+  const occupancyRateLabel = useMemo(() => {
+    if (!flat) return ''
+    return flat.status === 'occupied'
+      ? t('occupied')
+      : flat.status === 'maintenance'
+        ? t('maintenance')
+        : t('available')
+  }, [flat, t])
 
   if (!flat) return null
 
-  const flatPayments = mockPayments.filter(p => p.flatId === flat.id)
+  const renterWhatsAppMessage = tContact('messageRenter', {
+    property: propertyName?.trim() || tContact('propertyFallback'),
+  })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl sm:text-2xl">
-            Flat {flat.flatNumber}
+            {t('flatNumber', { number: flat.flatNumber })}
           </DialogTitle>
-          <DialogDescription>Floor {flat.floor}</DialogDescription>
+          <DialogDescription>
+            {t('floorNumber', { number: flat.floor })} · {occupancyRateLabel}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Status and Rent */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <FlatStatusBadge status={flat.status} className="text-sm" />
             <div>
-              <p className="text-sm text-muted-foreground">Monthly Rent</p>
+              <p className="text-sm text-muted-foreground">{t('rent')}</p>
               <p className="text-2xl font-bold text-primary">
-                ৳{flat.rent.toLocaleString()}
+                {formatCurrency(flat.rent)}
               </p>
             </div>
           </div>
 
-          {/* Flat Details */}
-          {(flat.area || flat.bedrooms || flat.bathrooms) && (
-            <div className="grid grid-cols-3 gap-2 sm:gap-4">
-              {flat.area && (
+          {(flat.area || flat.bedrooms || flat.bathrooms || flat.deposit != null) && (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-4">
+              {flat.area ? (
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Area</p>
+                  <p className="text-sm text-muted-foreground">{t('form.area')}</p>
                   <p className="text-lg font-semibold">{flat.area} sqft</p>
                 </div>
-              )}
-              {flat.bedrooms && (
+              ) : null}
+              {flat.bedrooms != null ? (
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Bedrooms</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('form.bedrooms')}
+                  </p>
                   <p className="text-lg font-semibold">{flat.bedrooms}</p>
                 </div>
-              )}
-              {flat.bathrooms && (
+              ) : null}
+              {flat.bathrooms != null ? (
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Bathrooms</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('form.bathrooms')}
+                  </p>
                   <p className="text-lg font-semibold">{flat.bathrooms}</p>
                 </div>
-              )}
+              ) : null}
+              {flat.deposit != null ? (
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">{t('deposit')}</p>
+                  <p className="text-lg font-semibold">
+                    {formatCurrency(flat.deposit)}
+                  </p>
+                </div>
+              ) : null}
             </div>
           )}
 
-          {/* Renter Information */}
           {flat.renter ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Renter Information</CardTitle>
+                <CardTitle className="text-lg">{t('renterInfo')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
@@ -168,22 +211,22 @@ export function FlatDetailDialog({
                     <User className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <p className="font-medium">{flat.renter.name}</p>
-                      <p className="text-sm text-muted-foreground">Name</p>
+                      <p className="text-sm text-muted-foreground">{t('name')}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Phone className="h-5 w-5 text-muted-foreground" />
                     <div className="flex-1">
                       <p className="font-medium">{flat.renter.phone}</p>
-                      <p className="text-sm text-muted-foreground">Phone</p>
+                      <p className="text-sm text-muted-foreground">{t('phone')}</p>
                     </div>
                     <WhatsAppButton
                       size="sm"
                       number={flat.renter.whatsapp}
-                      message={tContact('messageRenter')}
+                      message={renterWhatsAppMessage}
                     />
                   </div>
-                  {flat.renter.email && (
+                  {flat.renter.email ? (
                     <div className="flex items-center gap-3">
                       <Mail className="h-5 w-5 text-muted-foreground" />
                       <div>
@@ -191,8 +234,8 @@ export function FlatDetailDialog({
                         <p className="text-sm text-muted-foreground">Email</p>
                       </div>
                     </div>
-                  )}
-                  {flat.renter.nid && (
+                  ) : null}
+                  {flat.renter.nid ? (
                     <div className="flex items-center gap-3">
                       <FileText className="h-5 w-5 text-muted-foreground" />
                       <div>
@@ -200,16 +243,16 @@ export function FlatDetailDialog({
                         <p className="text-sm text-muted-foreground">NID</p>
                       </div>
                     </div>
-                  )}
-                  {flat.renter.address && (
+                  ) : null}
+                  {flat.renter.address ? (
                     <div className="flex items-start gap-3">
-                      <Home className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <Home className="mt-0.5 h-5 w-5 text-muted-foreground" />
                       <div>
                         <p className="font-medium">{flat.renter.address}</p>
                         <p className="text-sm text-muted-foreground">Address</p>
                       </div>
                     </div>
-                  )}
+                  ) : null}
                   <div className="flex items-center gap-3">
                     <Calendar className="h-5 w-5 text-muted-foreground" />
                     <div>
@@ -217,7 +260,7 @@ export function FlatDetailDialog({
                         {new Date(flat.renter.joinedDate).toLocaleDateString()}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        Joined Date
+                        {t('joinedDate')}
                       </p>
                     </div>
                   </div>
@@ -227,77 +270,81 @@ export function FlatDetailDialog({
                   className="w-full"
                   onClick={() => setIsHistoryDialogOpen(true)}
                 >
-                  View Full History
+                  {t('viewHistory')}
                 </Button>
               </CardContent>
             </Card>
           ) : (
             <Card>
               <CardContent className="py-6 text-center">
-                <User className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground mb-4">No renter assigned</p>
+                <User className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
+                <p className="mb-4 text-muted-foreground">{t('noRenter')}</p>
                 <Button onClick={() => onAssignRenter(flat)}>
-                  Assign Renter
+                  {t('assignRenter')}
                 </Button>
               </CardContent>
             </Card>
           )}
 
-          {/* Payment History */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Payment History</CardTitle>
+              <CardTitle className="text-lg">{t('paymentHistory')}</CardTitle>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => onGenerateBill(flat)}
               >
                 <DollarSign className="mr-2 h-4 w-4" />
-                Generate Bill
+                {t('generateBill')}
               </Button>
             </CardHeader>
             <CardContent>
-              {flatPayments.length > 0 ? (
+              {billsLoading ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  {t('loadingBills')}
+                </div>
+              ) : bills.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Month</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Paid Date</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>{t('month')}</TableHead>
+                        <TableHead>{t('amount')}</TableHead>
+                        <TableHead>{t('dueDate')}</TableHead>
+                        <TableHead>{t('paidDate')}</TableHead>
+                        <TableHead>{t('status')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {flatPayments.map(payment => {
-                        const statusInfo = paymentStatusConfig[payment.status]
+                      {bills.map(bill => {
+                        const key =
+                          bill.status === 'paid'
+                            ? 'paid'
+                            : bill.status === 'overdue'
+                              ? 'overdue'
+                              : 'unpaid'
+                        const statusInfo = paymentStatusConfig[key]
                         const StatusIcon = statusInfo.icon
                         return (
-                          <TableRow key={payment.id}>
+                          <TableRow key={bill.id}>
                             <TableCell>
-                              {payment.month} {payment.year}
+                              {bill.month} {bill.year}
                             </TableCell>
                             <TableCell className="font-medium">
-                              ৳{payment.amount.toLocaleString()}
+                              {formatCurrency(bill.amount)}
                             </TableCell>
                             <TableCell>
-                              {new Date(payment.dueDate).toLocaleDateString()}
+                              {new Date(bill.dueDate).toLocaleDateString()}
                             </TableCell>
                             <TableCell>
-                              {payment.paidDate
-                                ? new Date(
-                                    payment.paidDate
-                                  ).toLocaleDateString()
-                                : '-'}
+                              {bill.paidDate
+                                ? new Date(bill.paidDate).toLocaleDateString()
+                                : '—'}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <StatusIcon
-                                  className={cn(
-                                    'h-4 w-4',
-                                    statusInfo.className
-                                  )}
+                                  className={cn('h-4 w-4', statusInfo.className)}
                                 />
                                 <span>{statusInfo.label}</span>
                               </div>
@@ -310,48 +357,110 @@ export function FlatDetailDialog({
                 </div>
               ) : (
                 <div className="py-6 text-center text-muted-foreground">
-                  No payment history available
+                  {t('noPaymentHistory')}
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Actions */}
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <Button
               variant="outline"
               className="flex-1"
               onClick={() => onOpenChange(false)}
             >
-              Close
+              {t('close')}
             </Button>
-            {!flat.renter && (
-              <Button className="flex-1" onClick={() => onAssignRenter(flat)}>
-                Assign Renter
+            {onEditFlat ? (
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => onEditFlat(flat)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                {t('editFlat')}
               </Button>
-            )}
-            {flat.renter && (
+            ) : null}
+            {flat.status === 'available' && onPublishListing ? (
+              flat.listingId ? (
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  asChild
+                >
+                  <a href={`/listings/${flat.listingId}`} target="_blank" rel="noreferrer">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    {t('viewListing')}
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  disabled={publishingListing}
+                  onClick={() => onPublishListing(flat)}
+                >
+                  <Megaphone className="mr-2 h-4 w-4" />
+                  {publishingListing ? t('publishing') : t('publishListing')}
+                </Button>
+              )
+            ) : null}
+            {!flat.renter ? (
+              <Button className="flex-1" onClick={() => onAssignRenter(flat)}>
+                {t('assignRenter')}
+              </Button>
+            ) : null}
+            {flat.renter && onEditRenter ? (
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => onEditRenter(flat)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit renter
+              </Button>
+            ) : null}
+            {flat.renter && onVacateFlat ? (
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={() => onVacateFlat(flat)}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                {t('vacate')}
+              </Button>
+            ) : null}
+            {flat.renter ? (
               <Button
                 variant="outline"
                 className="flex-1"
                 onClick={() => onGenerateBill(flat)}
               >
-                Generate Bill
+                {t('generateBill')}
               </Button>
-            )}
+            ) : null}
+            {!flat.renter && flat.status !== 'occupied' && onDeleteFlat ? (
+              <Button
+                variant="ghost"
+                className="flex-1 text-destructive hover:text-destructive"
+                onClick={() => onDeleteFlat(flat)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t('deleteFlat')}
+              </Button>
+            ) : null}
           </div>
         </div>
       </DialogContent>
 
-      {/* Renter History Dialog */}
-      {flat.renter && (
+      {flat.renter ? (
         <RenterHistoryDialog
           renterId={flat.renter.id}
           renterName={flat.renter.name}
           open={isHistoryDialogOpen}
           onOpenChange={setIsHistoryDialogOpen}
         />
-      )}
+      ) : null}
     </Dialog>
   )
 }

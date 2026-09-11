@@ -158,7 +158,10 @@ export function MemberFormDialog({
   const handlePhoto = async (file?: File) => {
     if (!file) return
     setUploading(true)
-    const uploaded = await uploadMediaFile(file, 'mess_member')
+    // Linked system users store photos on the account (profile);
+    // unlinked members keep photos on the membership row.
+    const kind = member?.userId ? 'profile' : 'mess_member'
+    const uploaded = await uploadMediaFile(file, kind)
     setUploading(false)
     if (!uploaded.ok) {
       toast.error(uploaded.error)
@@ -259,6 +262,11 @@ export function MemberFormDialog({
                       </Button>
                     )}
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    {member?.userId || member?.isSystemUser
+                      ? 'This member has an account — photo updates their profile too.'
+                      : 'Not a system user yet — photo is saved on this membership only.'}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     <Upload className="mr-1 inline h-3 w-3" />
                     {t('form.photoOptional')}

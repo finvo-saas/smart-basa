@@ -3,15 +3,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
-import { Building2, MapPin, Layers, Home } from 'lucide-react'
+import { Building2, MapPin, Layers, Home, Pencil } from 'lucide-react'
 import type { Building } from '@/types/building'
 import { useRouter } from 'next/navigation'
 
 interface BuildingCardProps {
   building: Building
+  onEdit?: (building: Building) => void
 }
 
-export function BuildingCard({ building }: BuildingCardProps) {
+export function BuildingCard({ building, onEdit }: BuildingCardProps) {
   const router = useRouter()
   const occupancyRate =
     building.totalFlats > 0
@@ -33,6 +34,18 @@ export function BuildingCard({ building }: BuildingCardProps) {
               <span className="line-clamp-1">{building.address}</span>
             </div>
           </div>
+          {onEdit ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              onClick={() => onEdit(building)}
+              aria-label="Edit building"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          ) : null}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

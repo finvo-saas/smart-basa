@@ -8,6 +8,11 @@ import {
   syncDemoIdentityForRole,
 } from '@/lib/auth/demo-identity'
 import { clearAuthTokens, setAuthTokens } from '@/utils/auth-tokens'
+import {
+  authStorageGet,
+  authStorageRemove,
+  authStorageSet,
+} from '@/utils/auth-storage'
 import { getDefaultPathForRole } from '@/lib/auth'
 import {
   normalizeOwnerVerticals,
@@ -20,17 +25,22 @@ const OWNER_FOCUS_SELECTED_KEY = 'ownerFocusSelected'
 
 function persistOwnerFocus(user: AuthUser): void {
   if (user.role !== 'owner') {
-    sessionStorage.removeItem(OWNER_VERTICALS_KEY)
-    sessionStorage.removeItem(OWNER_PRIMARY_KEY)
-    sessionStorage.removeItem(OWNER_FOCUS_SELECTED_KEY)
+    authStorageRemove(OWNER_VERTICALS_KEY)
+    authStorageRemove(OWNER_PRIMARY_KEY)
+    authStorageRemove(OWNER_FOCUS_SELECTED_KEY)
     return
   }
-  sessionStorage.setItem(
+  authStorageSet(
     OWNER_VERTICALS_KEY,
-    JSON.stringify(normalizeOwnerVerticals(user.ownerEnabledVerticals)),
+    JSON.stringify(
+      normalizeOwnerVerticals(
+        user.ownerEnabledVerticals,
+        user.ownerPrimaryFocus,
+      ),
+    ),
   )
-  sessionStorage.setItem(OWNER_PRIMARY_KEY, user.ownerPrimaryFocus || '')
-  sessionStorage.setItem(
+  authStorageSet(OWNER_PRIMARY_KEY, user.ownerPrimaryFocus || '')
+  authStorageSet(
     OWNER_FOCUS_SELECTED_KEY,
     user.ownerFocusSelected ? 'true' : 'false',
   )
@@ -39,9 +49,10 @@ function persistOwnerFocus(user: AuthUser): void {
 export function getStoredOwnerVerticals(): OwnerVertical[] {
   if (typeof window === 'undefined') return []
   try {
-    const raw = sessionStorage.getItem(OWNER_VERTICALS_KEY)
+    const raw = authStorageGet(OWNER_VERTICALS_KEY)
     if (!raw) return []
-    return normalizeOwnerVerticals(JSON.parse(raw))
+    const primary = authStorageGet(OWNER_PRIMARY_KEY) || ''
+    return normalizeOwnerVerticals(JSON.parse(raw), primary)
   } catch {
     return []
   }
@@ -49,13 +60,13 @@ export function getStoredOwnerVerticals(): OwnerVertical[] {
 
 export function getStoredOwnerPrimaryFocus(): OwnerVertical | '' {
   if (typeof window === 'undefined') return ''
-  const raw = sessionStorage.getItem(OWNER_PRIMARY_KEY) || ''
+  const raw = authStorageGet(OWNER_PRIMARY_KEY) || ''
   return normalizeOwnerVerticals([raw])[0] || ''
 }
 
 export function isOwnerFocusSelected(): boolean {
   if (typeof window === 'undefined') return false
-  return sessionStorage.getItem(OWNER_FOCUS_SELECTED_KEY) === 'true'
+  return authStorageGet(OWNER_FOCUS_SELECTED_KEY) === 'true'
 }
 
 /** Re-export for callers that import from utils/auth. */
@@ -63,23 +74,23 @@ export { isLogoutGuardActive } from '@/lib/auth/session-events'
 
 export const getStoredRole = (): UserRole | null => {
   if (typeof window === 'undefined') return null
-  const role = sessionStorage.getItem('userRole') as UserRole | null
+  const role = authStorageGet('userRole') as UserRole | null
   return role || null
 }
 
 export const isLoggedIn = (): boolean => {
   if (typeof window === 'undefined') return false
-  return sessionStorage.getItem('isLoggedIn') === 'true'
+  return authStorageGet('isLoggedIn') === 'true'
 }
 
 export const isOtpVerified = (): boolean => {
   if (typeof window === 'undefined') return false
-  return sessionStorage.getItem('otpVerified') === 'true'
+  return authStorageGet('otpVerified') === 'true'
 }
 
 export const getLoginPhone = (): string | null => {
   if (typeof window === 'undefined') return null
-  return sessionStorage.getItem('loginPhone')
+  return authStorageGet('loginPhone')
 }
 
 export const hasCompleteSession = (): boolean => {
@@ -93,12 +104,12 @@ export const hasCompleteSession = (): boolean => {
 
 export const needsPinSetup = (): boolean => {
   if (typeof window === 'undefined') return false
-  return sessionStorage.getItem('needsPinSetup') === 'true'
+  return authStorageGet('needsPinSetup') === 'true'
 }
 
 export const isPinResetFlow = (): boolean => {
   if (typeof window === 'undefined') return false
-  return sessionStorage.getItem('pinReset') === 'true'
+  return authStorageGet('pinReset') === 'true'
 }
 
 export const setUserSession = (params: {
@@ -108,16 +119,16 @@ export const setUserSession = (params: {
 }): void => {
   if (typeof window === 'undefined') return
   clearLogoutGuard()
-  sessionStorage.setItem('isLoggedIn', 'true')
-  sessionStorage.setItem('otpVerified', 'true')
-  sessionStorage.setItem('userRole', params.role)
-  if (params.phone) sessionStorage.setItem('loginPhone', params.phone)
-  if (params.name) sessionStorage.setItem('userName', params.name)
+  authStorageSet('isLoggedIn', 'true')
+  authStorageSet('otpVerified', 'true')
+  authStorageSet('userRole', params.role)
+  if (params.phone) authStorageSet('loginPhone', params.phone)
+  if (params.name) authStorageSet('userName', params.name)
   syncDemoIdentityForRole(params.role)
   notifyAuthSessionChanged()
 }
 
-/** Apply OTP/role API session to sessionStorage + JWT tokens. */
+/** Apply OTP/role API session to persisted storage + JWT tokens. */
 export function applyAuthSession(
   session: AuthSession,
   options?: { complete?: boolean },
@@ -133,13 +144,13 @@ export function applyAuthSession(
   })
 
   const phoneDigits = session.user.phoneDigits
-  sessionStorage.setItem('loginPhone', phoneDigits)
-  sessionStorage.setItem('otpVerified', 'true')
-  sessionStorage.setItem(
+  authStorageSet('loginPhone', phoneDigits)
+  authStorageSet('otpVerified', 'true')
+  authStorageSet(
     'needsPinSetup',
     session.needsPinSetup ? 'true' : 'false',
   )
-  sessionStorage.setItem('hasPin', session.hasPin ? 'true' : 'false')
+  authStorageSet('hasPin', session.hasPin ? 'true' : 'false')
 
   const complete =
     options?.complete ??
@@ -148,36 +159,36 @@ export function applyAuthSession(
       !Boolean(session.needsPinSetup))
 
   if (complete) {
-    sessionStorage.setItem('isLoggedIn', 'true')
-    sessionStorage.setItem('userRole', session.user.role)
+    authStorageSet('isLoggedIn', 'true')
+    authStorageSet('userRole', session.user.role)
     if (session.user.name) {
-      sessionStorage.setItem('userName', session.user.name)
+      authStorageSet('userName', session.user.name)
     }
     if (session.user.profilePhotoUrl) {
-      sessionStorage.setItem('profilePhotoUrl', session.user.profilePhotoUrl)
+      authStorageSet('profilePhotoUrl', session.user.profilePhotoUrl)
     }
     if (session.user.role === 'admin' && session.adminRole) {
-      sessionStorage.setItem('adminRole', session.adminRole)
-      sessionStorage.setItem('adminId', session.user.id)
+      authStorageSet('adminRole', session.adminRole)
+      authStorageSet('adminId', session.user.id)
     } else {
-      sessionStorage.removeItem('adminRole')
-      sessionStorage.removeItem('adminId')
+      authStorageRemove('adminRole')
+      authStorageRemove('adminId')
     }
     persistOwnerFocus(session.user)
     syncDemoIdentityForRole(session.user.role)
   } else {
-    sessionStorage.removeItem('isLoggedIn')
-    sessionStorage.removeItem('userRole')
+    authStorageRemove('isLoggedIn')
+    authStorageRemove('userRole')
   }
 
-  sessionStorage.setItem(
+  authStorageSet(
     'availableRoles',
     JSON.stringify(session.availableRoles),
   )
   if (session.adminRole) {
-    sessionStorage.setItem('pendingAdminRole', session.adminRole)
+    authStorageSet('pendingAdminRole', session.adminRole)
   } else {
-    sessionStorage.removeItem('pendingAdminRole')
+    authStorageRemove('pendingAdminRole')
   }
 
   notifyAuthSessionChanged()
@@ -195,7 +206,7 @@ export function nextPathAfterAuth(session: AuthSession): string {
 export function getAvailableRolesFromSession(): UserRole[] {
   if (typeof window === 'undefined') return ['renter', 'owner']
   try {
-    const raw = sessionStorage.getItem('availableRoles')
+    const raw = authStorageGet('availableRoles')
     if (!raw) return ['renter', 'owner']
     return JSON.parse(raw) as UserRole[]
   } catch {
@@ -205,12 +216,12 @@ export function getAvailableRolesFromSession(): UserRole[] {
 
 export function getPendingAdminRole(): AdminRole | null {
   if (typeof window === 'undefined') return null
-  return sessionStorage.getItem('pendingAdminRole') as AdminRole | null
+  return authStorageGet('pendingAdminRole') as AdminRole | null
 }
 
 export const getVerificationStatus = (): UserVerificationStatus => {
   if (typeof window === 'undefined') return 'unverified'
-  const stored = sessionStorage.getItem(
+  const stored = authStorageGet(
     'verificationStatus',
   ) as UserVerificationStatus | null
   return stored || 'unverified'
@@ -220,31 +231,31 @@ export const setVerificationStatus = (
   status: UserVerificationStatus,
 ): void => {
   if (typeof window === 'undefined') return
-  sessionStorage.setItem('verificationStatus', status)
+  authStorageSet('verificationStatus', status)
 }
 
 /** Wipe client auth state (tokens + session flags). */
 export function clearLocalAuthState(): void {
   if (typeof window === 'undefined') return
   clearAuthTokens()
-  sessionStorage.removeItem('isLoggedIn')
-  sessionStorage.removeItem('userRole')
-  sessionStorage.removeItem('loginPhone')
-  sessionStorage.removeItem('otpVerified')
-  sessionStorage.removeItem('userName')
-  sessionStorage.removeItem('profilePhotoUrl')
-  sessionStorage.removeItem('adminRole')
-  sessionStorage.removeItem('adminId')
-  sessionStorage.removeItem('verificationStatus')
-  sessionStorage.removeItem('availableRoles')
-  sessionStorage.removeItem('pendingAdminRole')
-  sessionStorage.removeItem('devOtp')
-  sessionStorage.removeItem('needsPinSetup')
-  sessionStorage.removeItem('hasPin')
-  sessionStorage.removeItem('pinReset')
-  sessionStorage.removeItem(OWNER_VERTICALS_KEY)
-  sessionStorage.removeItem(OWNER_PRIMARY_KEY)
-  sessionStorage.removeItem(OWNER_FOCUS_SELECTED_KEY)
+  authStorageRemove('isLoggedIn')
+  authStorageRemove('userRole')
+  authStorageRemove('loginPhone')
+  authStorageRemove('otpVerified')
+  authStorageRemove('userName')
+  authStorageRemove('profilePhotoUrl')
+  authStorageRemove('adminRole')
+  authStorageRemove('adminId')
+  authStorageRemove('verificationStatus')
+  authStorageRemove('availableRoles')
+  authStorageRemove('pendingAdminRole')
+  authStorageRemove('devOtp')
+  authStorageRemove('needsPinSetup')
+  authStorageRemove('hasPin')
+  authStorageRemove('pinReset')
+  authStorageRemove(OWNER_VERTICALS_KEY)
+  authStorageRemove(OWNER_PRIMARY_KEY)
+  authStorageRemove(OWNER_FOCUS_SELECTED_KEY)
   clearDemoIdentity()
 }
 
@@ -267,7 +278,7 @@ export async function logout(): Promise<void> {
 
 export const getStoredAdminRole = (): AdminRole | null => {
   if (typeof window === 'undefined') return null
-  const role = sessionStorage.getItem('adminRole') as AdminRole | null
+  const role = authStorageGet('adminRole') as AdminRole | null
   return role || null
 }
 
@@ -287,38 +298,40 @@ export const setAdminSession = (params: {
    */
   if (typeof window === 'undefined') return
   clearLogoutGuard()
-  sessionStorage.setItem('isLoggedIn', 'true')
-  sessionStorage.setItem('otpVerified', 'true')
-  sessionStorage.setItem('userRole', 'admin')
-  sessionStorage.setItem('loginPhone', params.phone)
-  sessionStorage.setItem('adminRole', params.adminRole)
-  sessionStorage.setItem('adminId', params.adminId ?? 'admin1')
-  if (params.name) sessionStorage.setItem('userName', params.name)
+  authStorageSet('isLoggedIn', 'true')
+  authStorageSet('otpVerified', 'true')
+  authStorageSet('userRole', 'admin')
+  authStorageSet('loginPhone', params.phone)
+  authStorageSet('adminRole', params.adminRole)
+  authStorageSet('adminId', params.adminId ?? 'admin1')
+  if (params.name) authStorageSet('userName', params.name)
   notifyAuthSessionChanged()
 }
 
 export const getDisplayName = (): string => {
   if (typeof window === 'undefined') return 'Guest'
-  const storedName = sessionStorage.getItem('userName')
+  const storedName = authStorageGet('userName')
   if (storedName) return storedName
-  const phone = sessionStorage.getItem('loginPhone')
+  const phone = authStorageGet('loginPhone')
   if (phone) return `User ${phone.slice(-4)}`
   return 'Guest'
 }
 
 export const getProfilePhotoUrl = (): string | null => {
   if (typeof window === 'undefined') return null
-  return sessionStorage.getItem('profilePhotoUrl')
+  return authStorageGet('profilePhotoUrl')
 }
 
 export function syncUserDisplay(user: AuthUser): void {
   if (typeof window === 'undefined') return
-  if (user.name) sessionStorage.setItem('userName', user.name)
+  if (user.name) authStorageSet('userName', user.name)
   if (user.profilePhotoUrl) {
-    sessionStorage.setItem('profilePhotoUrl', user.profilePhotoUrl)
+    authStorageSet('profilePhotoUrl', user.profilePhotoUrl)
+  } else if (user.profilePhotoUrl === null || user.profilePhotoUrl === '') {
+    authStorageRemove('profilePhotoUrl')
   }
-  sessionStorage.setItem('loginPhone', user.phoneDigits)
-  if (user.role) sessionStorage.setItem('userRole', user.role)
+  authStorageSet('loginPhone', user.phoneDigits)
+  if (user.role) authStorageSet('userRole', user.role)
   persistOwnerFocus(user)
   notifyAuthSessionChanged()
 }

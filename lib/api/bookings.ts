@@ -65,6 +65,7 @@ export async function patchBookingStatus(
   bookingId: string,
   status: BookingStatus,
   reason?: string,
+  flatId?: string,
 ): Promise<ApiResult<Booking>> {
   if ((status === 'rejected' || status === 'cancelled') && !reason?.trim()) {
     return {
@@ -79,6 +80,7 @@ export async function patchBookingStatus(
     body: {
       status,
       reason: reason?.trim() || '',
+      ...(flatId ? { flatId } : {}),
     },
   })
 }

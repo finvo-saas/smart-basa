@@ -26,6 +26,19 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      // Local Django media (dev without Spaces)
+      {
+        protocol: 'http',
+        hostname: '127.0.0.1',
+        port: '8000',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '8000',
+        pathname: '/media/**',
+      },
       // Spaces origin and CDN edge (the CDN host has an extra `.cdn.` label,
       // so a single-level `*.` wildcard would not match it).
       {

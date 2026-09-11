@@ -1,7 +1,14 @@
 /** Decouple session mutations from React hooks to avoid import cycles. */
 
+import {
+  authStorageGet,
+  authStorageRemove,
+  authStorageSet,
+} from '@/utils/auth-storage'
+
 export const AUTH_SESSION_CHANGED = 'auth-session-changed'
 
+/** Survives tab close so intentional logout is not undone by cookie restore. */
 const LOGOUT_GUARD_KEY = 'authLoggedOut'
 
 export function notifyAuthSessionChanged(): void {
@@ -11,16 +18,13 @@ export function notifyAuthSessionChanged(): void {
 
 /** Blocks cookie restore / token refresh after an intentional logout. */
 export function isLogoutGuardActive(): boolean {
-  if (typeof window === 'undefined') return false
-  return sessionStorage.getItem(LOGOUT_GUARD_KEY) === '1'
+  return authStorageGet(LOGOUT_GUARD_KEY) === '1'
 }
 
 export function setLogoutGuard(): void {
-  if (typeof window === 'undefined') return
-  sessionStorage.setItem(LOGOUT_GUARD_KEY, '1')
+  authStorageSet(LOGOUT_GUARD_KEY, '1')
 }
 
 export function clearLogoutGuard(): void {
-  if (typeof window === 'undefined') return
-  sessionStorage.removeItem(LOGOUT_GUARD_KEY)
+  authStorageRemove(LOGOUT_GUARD_KEY)
 }

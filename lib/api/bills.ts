@@ -53,6 +53,18 @@ export async function fetchBillById(
   return result
 }
 
+export async function patchBill(
+  billId: string,
+  data: Partial<Bill> & {
+    items?: Bill['items']
+  },
+): Promise<ApiResult<Bill>> {
+  return apiRequest<Bill>(`/bills/${billId}/`, {
+    method: 'PATCH',
+    body: data,
+  })
+}
+
 export async function saveBillsSnapshot(
   bills: Bill[],
 ): Promise<ApiResult<Bill[]>> {
@@ -94,9 +106,18 @@ export async function bulkGenerateBills(data: {
 export async function saveBillTemplates(
   templates: BillTemplate[],
 ): Promise<ApiResult<BillTemplate[]>> {
+  const payload = templates.map(template => {
+    const { id, ...rest } = template
+    const isUuid =
+      typeof id === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        id,
+      )
+    return isUuid ? { id, ...rest } : rest
+  })
   return apiRequest<BillTemplate[]>('/bill-templates/bulk/', {
     method: 'PUT',
-    body: templates,
+    body: payload,
   })
 }
 
@@ -132,6 +153,70 @@ export async function markBillAsPaid(
   return apiRequest<Bill>(`/bills/${billId}/mark-paid/`, {
     method: 'POST',
     body: { paidAt },
+  })
+}
+
+export type BillWhatsAppSharePayload = {
+  billId: string
+  tenantName: string
+  whatsappNumber: string
+  whatsappUrl: string
+  /** Branded public system URL (redirects to Spaces). */
+  pdfUrl: string
+  /** Underlying DigitalOcean Spaces CDN URL (optional). */
+  storagePdfUrl?: string
+  pdfKey: string
+  message: string
+  sharedAt: string
+}
+
+/** Owner: generate public bill PDF + wa.me deep link to tenant WhatsApp. */
+export async function shareBillViaWhatsApp(
+  billId: string,
+  options?: { regeneratePdf?: boolean },
+): Promise<ApiResult<BillWhatsAppSharePayload>> {
+  return apiRequest<BillWhatsAppSharePayload>(
+    `/bills/${billId}/whatsapp-share/`,
+    {
+      method: 'POST',
+      body: { regeneratePdf: Boolean(options?.regeneratePdf) },
+    },
+  )
+}
+
+export type BillDueRemindPayload = {
+  billId: string
+  tenantName: string
+  whatsappNumber?: string
+  whatsappUrl?: string
+  phone?: string
+  message: string
+  channel: 'whatsapp' | 'sms'
+  sharedAt?: string
+  delivered?: boolean
+}
+
+/** Owner: WhatsApp (default) or SMS due reminder — no PDF. */
+export async function remindBillDue(
+  billId: string,
+  channel: 'whatsapp' | 'sms' = 'whatsapp',
+): Promise<ApiResult<BillDueRemindPayload>> {
+  return apiRequest<BillDueRemindPayload>(`/bills/${billId}/due-remind/`, {
+    method: 'POST',
+    body: { channel },
+  })
+}
+
+export async function bulkRemindBillsDue(data: {
+  billIds?: string[]
+  propertyType?: 'apartment' | 'mess'
+  unpaidOnly?: boolean
+}): Promise<
+  ApiResult<{ reminders: BillDueRemindPayload[]; errors: { billId: string; error: string }[] }>
+> {
+  return apiRequest('/bills/bulk-due-remind/', {
+    method: 'POST',
+    body: data,
   })
 }
 

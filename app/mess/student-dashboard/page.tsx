@@ -32,6 +32,7 @@ import {
   ScrollText,
 } from 'lucide-react'
 import {
+  acknowledgeMessNotice,
   fetchMessById,
   fetchNoticesByMess,
   fetchOrCreateMessBill,
@@ -41,6 +42,7 @@ import { ok } from '@/lib/api/http'
 import { useMessStudentSelf } from '@/hooks/useMessStudentSelf'
 import { useMockQuery } from '@/hooks/useMockQuery'
 import { useAppFormat } from '@/hooks/useAppFormat'
+import { toast } from '@/lib/feedback/toast'
 import type { Bill } from '@/types/bill'
 
 export default function StudentDashboardPage() {
@@ -65,10 +67,23 @@ export default function StudentDashboardPage() {
     () => (mess ? fetchNoticesByMess(mess.id) : Promise.resolve(ok([]))),
     [mess]
   )
-  const { data: notices } = useMockQuery(loadNotices)
+  const { data: notices, refetch: refetchNotices } = useMockQuery(loadNotices)
 
   const [messBill, setMessBill] = useState<Bill | null>(null)
   const [isPayOpen, setIsPayOpen] = useState(false)
+
+  const handleAcknowledge = useCallback(
+    (noticeId: string) => {
+      void acknowledgeMessNotice(noticeId, tenantId).then(result => {
+        if (result.ok) {
+          void refetchNotices()
+          return
+        }
+        toast.error(result.error || tc('error'))
+      })
+    },
+    [tenantId, refetchNotices, tc]
+  )
 
   useEffect(() => {
     if (!student || !mess) return
@@ -279,8 +294,8 @@ export default function StudentDashboardPage() {
 
             <EnhancedNoticeBoard
               notices={notices ?? []}
-              userId={student.id}
-              onAcknowledge={() => {}}
+              userId={tenantId}
+              onAcknowledge={handleAcknowledge}
               showAcknowledgment
             />
           </div>

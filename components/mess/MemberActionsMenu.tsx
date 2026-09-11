@@ -32,6 +32,8 @@ import type { MessMember } from '@/types/mess'
 type MemberActionsMenuProps = {
   member: MessMember
   messId: string
+  /** Mess / property display name for the WhatsApp greeting. */
+  propertyName?: string
   onEdit: (member: MessMember) => void
   onVacateSeat: (member: MessMember) => void
   onToggleActive: (member: MessMember) => void
@@ -41,6 +43,7 @@ type MemberActionsMenuProps = {
 export function MemberActionsMenu({
   member,
   messId,
+  propertyName,
   onEdit,
   onVacateSeat,
   onToggleActive,
@@ -50,7 +53,9 @@ export function MemberActionsMenu({
   const tContact = useTranslations('contact')
   const whatsapp = whatsappLink(
     member.whatsappNumber,
-    tContact('messageRenter')
+    tContact('messageRenter', {
+      property: propertyName?.trim() || tContact('propertyFallback'),
+    }),
   )
 
   return (

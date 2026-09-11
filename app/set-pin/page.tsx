@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/card'
 import { setPin } from '@/lib/api/auth'
 import { applyAuthSession, nextPathAfterAuth, needsPinSetup, isPinResetFlow } from '@/utils/auth'
+import { authStorageRemove } from '@/utils/auth-storage'
 import { hasAuthTokens } from '@/utils/auth-tokens'
 
 export default function SetPinPage() {
@@ -59,7 +60,7 @@ export default function SetPinPage() {
     }
 
     applyAuthSession(result.data)
-    sessionStorage.removeItem('pinReset')
+    authStorageRemove('pinReset')
     router.push(nextPathAfterAuth(result.data))
   }
 

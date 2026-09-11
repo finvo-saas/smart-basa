@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -59,6 +60,18 @@ export function EmergencyContactDialog({
       isPrimary: initialData?.isPrimary || false,
     },
   })
+
+  useEffect(() => {
+    if (!open) return
+    form.reset({
+      name: initialData?.name || '',
+      relation: initialData?.relation || '',
+      phone: initialData?.phone || '',
+      email: initialData?.email || '',
+      address: initialData?.address || '',
+      isPrimary: initialData?.isPrimary || false,
+    })
+  }, [open, initialData, form])
 
   const handleSubmit = (data: EmergencyContactFormData) => {
     onSubmit(data)

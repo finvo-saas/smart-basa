@@ -47,6 +47,7 @@
     "empty": "No map location yet — nearby places will appear once coordinates are set.",
     "loading": "Finding nearby places…",
     "none": "No nearby places found in OpenStreetMap for this spot.",
+    "retry": "Try again",
     "hospital": "Hospitals",
     "school": "Schools",
     "market": "Markets",

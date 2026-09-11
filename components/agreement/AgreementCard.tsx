@@ -10,6 +10,7 @@ import {
   Calendar,
   AlertCircle,
   CheckCircle2,
+  Pencil,
 } from 'lucide-react'
 import type { RentalAgreement } from '@/types/agreement'
 import { format, differenceInDays } from 'date-fns'
@@ -18,12 +19,14 @@ interface AgreementCardProps {
   agreement: RentalAgreement
   onView?: (agreement: RentalAgreement) => void
   onDownload?: (agreement: RentalAgreement) => void
+  onEdit?: (agreement: RentalAgreement) => void
 }
 
 export function AgreementCard({
   agreement,
   onView,
   onDownload,
+  onEdit,
 }: AgreementCardProps) {
   const daysUntilExpiry = differenceInDays(
     new Date(agreement.expiryDate),
@@ -157,6 +160,17 @@ export function AgreementCard({
             >
               <Eye className="h-4 w-4 mr-2" />
               View
+            </Button>
+          )}
+          {onEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => onEdit(agreement)}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
             </Button>
           )}
           {onDownload && (

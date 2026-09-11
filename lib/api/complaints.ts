@@ -1,4 +1,4 @@
-import type { Complaint, Notification } from '@/types/complaint'
+import type { Complaint, ComplaintMessage, Notification } from '@/types/complaint'
 import type { CreateComplaintRequest } from './contracts'
 import { apiRequest } from './client'
 import type { ApiResult } from './http'
@@ -22,6 +22,14 @@ export async function createComplaint(
       title: input.title,
       description: input.description,
       imageUrl: input.imageUrl || '',
+      category: input.category || 'maintenance',
+      scopeType: input.scopeType || undefined,
+      scopeId: input.scopeId || null,
+      targetId: input.targetId || null,
+      buildingId: input.buildingId || null,
+      flatId: input.flatId || null,
+      messId: input.messId || null,
+      hotelId: input.hotelId || null,
     },
   })
 }
@@ -34,6 +42,38 @@ export async function updateComplaintStatus(
   return apiRequest<Complaint>(`/complaints/${id}/status/`, {
     method: 'PATCH',
     body: { status, response: response || '' },
+  })
+}
+
+export async function patchComplaint(
+  id: string,
+  data: Partial<{
+    title: string
+    description: string
+    category: Complaint['category']
+    status: Complaint['status']
+    response: string
+  }>,
+): Promise<ApiResult<Complaint>> {
+  return apiRequest<Complaint>(`/complaints/${id}/status/`, {
+    method: 'PATCH',
+    body: data,
+  })
+}
+
+export async function fetchComplaintMessages(
+  complaintId: string,
+): Promise<ApiResult<ComplaintMessage[]>> {
+  return apiRequest<ComplaintMessage[]>(`/complaints/${complaintId}/messages/`)
+}
+
+export async function postComplaintMessage(
+  complaintId: string,
+  body: string,
+): Promise<ApiResult<ComplaintMessage>> {
+  return apiRequest<ComplaintMessage>(`/complaints/${complaintId}/messages/`, {
+    method: 'POST',
+    body: { body },
   })
 }
 

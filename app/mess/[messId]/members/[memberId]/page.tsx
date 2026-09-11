@@ -240,7 +240,9 @@ export default function MessMemberDetailPage() {
               <WhatsAppButton
                 size="sm"
                 number={member.whatsappNumber}
-                message={tContact('messageRenter')}
+                message={tContact('messageRenter', {
+                  property: mess?.name?.trim() || tContact('propertyFallback'),
+                })}
               />
               <Button size="sm" variant="outline" asChild>
                 <Link href={`/mess/${messId}/members/${memberId}/meals`}>

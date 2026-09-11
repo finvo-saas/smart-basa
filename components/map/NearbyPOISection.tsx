@@ -1,10 +1,10 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { useMockQuery } from '@/hooks/useMockQuery'
 import { fetchNearbyPOIs } from '@/lib/api/discover'
-import type { POICategory } from '@/types/living'
+import type { NearbyPOIResponse, POICategory } from '@/types/living'
+import { Button } from '@/components/ui/button'
 import {
   Bus,
   GraduationCap,
@@ -32,23 +32,85 @@ const ICONS = {
   metro: TrainFront,
 }
 
+function hasAnyPois(data: NearbyPOIResponse | null | undefined): boolean {
+  if (!data?.pois) return false
+  return CATEGORIES.some(key => (data.pois[key] || []).length > 0)
+}
+
 export function NearbyPOISection({
   lat,
   lng,
 }: {
-  lat?: number
-  lng?: number
+  lat?: number | null
+  lng?: number | null
 }) {
   const t = useTranslations('living.poi')
-  const canQuery = lat != null && lng != null
+  const canQuery =
+    lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)
+
+  const [data, setData] = useState<NearbyPOIResponse | null>(null)
+  const [loading, setLoading] = useState(canQuery)
+  const [error, setError] = useState<string | null>(null)
+  const requestId = useRef(0)
+
   const load = useCallback(
-    () =>
-      canQuery
-        ? fetchNearbyPOIs(lat, lng)
-        : Promise.resolve({ ok: true as const, data: null }),
+    async (opts?: { soft?: boolean }) => {
+      if (!canQuery) {
+        setData(null)
+        setLoading(false)
+        setError(null)
+        return
+      }
+
+      const id = ++requestId.current
+      if (!opts?.soft) {
+        setLoading(true)
+        setError(null)
+      }
+
+      const maxAttempts = 3
+      let lastError: string | null = null
+      let lastData: NearbyPOIResponse | null = null
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (id !== requestId.current) return
+        const result = await fetchNearbyPOIs(Number(lat), Number(lng))
+        if (id !== requestId.current) return
+
+        if (!result.ok) {
+          lastError = result.error
+          // Brief pause then retry (Overpass rate limits / cold start)
+          if (attempt < maxAttempts - 1) {
+            await new Promise(r => setTimeout(r, 800 * (attempt + 1)))
+            continue
+          }
+          break
+        }
+
+        lastData = result.data
+        lastError = null
+        if (hasAnyPois(result.data)) break
+        // Empty payload often means Overpass flake — retry before showing "none"
+        if (attempt < maxAttempts - 1) {
+          await new Promise(r => setTimeout(r, 900 * (attempt + 1)))
+        }
+      }
+
+      if (id !== requestId.current) return
+      setData(lastData)
+      setError(lastError)
+      setLoading(false)
+    },
     [canQuery, lat, lng],
   )
-  const { data, loading } = useMockQuery(load)
+
+  useEffect(() => {
+    void load()
+    return () => {
+      // Invalidate in-flight responses from Strict Mode remounts
+      requestId.current += 1
+    }
+  }, [load])
 
   if (!canQuery) {
     return (
@@ -60,9 +122,7 @@ export function NearbyPOISection({
   }
 
   const pois = data?.pois
-  const hasAny = pois
-    ? CATEGORIES.some(key => (pois[key] || []).length > 0)
-    : false
+  const found = hasAnyPois(data)
 
   return (
     <section>
@@ -70,8 +130,30 @@ export function NearbyPOISection({
       <p className="mb-4 text-sm text-muted-foreground">{t('subtitle')}</p>
       {loading ? (
         <p className="text-sm text-muted-foreground">{t('loading')}</p>
-      ) : !hasAny ? (
-        <p className="text-sm text-muted-foreground">{t('none')}</p>
+      ) : error ? (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void load()}
+          >
+            {t('retry')}
+          </Button>
+        </div>
+      ) : !found ? (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">{t('none')}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void load()}
+          >
+            {t('retry')}
+          </Button>
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {CATEGORIES.map(key => {
@@ -86,7 +168,7 @@ export function NearbyPOISection({
                 </p>
                 <ul className="space-y-1.5 text-sm">
                   {items.slice(0, 4).map(item => (
-                    <li key={`${item.name}-${item.lat}`}>
+                    <li key={`${item.name}-${item.lat}-${item.lng}`}>
                       <a
                         href={`https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`}
                         target="_blank"

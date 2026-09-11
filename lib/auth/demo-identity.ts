@@ -1,7 +1,8 @@
 /**
- * Demo identity keys in sessionStorage (until real auth backend).
+ * Demo identity keys (until real auth backend).
  */
 import type { UserRole } from '@/types'
+import { authStorageGet } from '@/utils/auth-storage'
 
 const RENTER_KEY = 'demoRenterId'
 const OWNER_KEY = 'demoOwnerId'
@@ -82,7 +83,7 @@ export function clearDemoIdentity(): void {
 
 function readStoredRole(): UserRole | null {
   if (typeof window === 'undefined') return null
-  const role = sessionStorage.getItem('userRole') as UserRole | null
+  const role = authStorageGet('userRole') as UserRole | null
   return role || null
 }
 
@@ -92,7 +93,7 @@ export function getDemoUserId(role?: UserRole | null): string {
   if (resolved === 'owner') return getDemoOwnerId()
   if (resolved === 'admin') {
     if (typeof window === 'undefined') return 'admin1'
-    return sessionStorage.getItem('adminId') || 'admin1'
+    return authStorageGet('adminId') || 'admin1'
   }
   return getDemoTenantId()
 }
@@ -108,14 +109,8 @@ export function getDemoRenterProfile(): {
   phone: string
   email: string
 } {
-  const phone =
-    (typeof window !== 'undefined'
-      ? sessionStorage.getItem('loginPhone')
-      : null) || '+8801711111111'
-  const name =
-    (typeof window !== 'undefined'
-      ? sessionStorage.getItem('userName')
-      : null) || 'Rahim Uddin'
+  const phone = authStorageGet('loginPhone') || '+8801711111111'
+  const name = authStorageGet('userName') || 'Rahim Uddin'
   const normalized = phone.startsWith('+')
     ? phone
     : `+880${phone.replace(/^0/, '')}`

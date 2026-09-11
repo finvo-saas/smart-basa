@@ -38,9 +38,10 @@ export function HeroSection() {
             </span>
           </div>
 
-          <h1 className="mb-5 text-balance text-3xl font-bold tracking-tight leading-tight sm:mb-6 sm:text-5xl md:text-6xl lg:text-7xl">
+          <h1 className="mb-5 text-balance text-3xl font-bold tracking-tight leading-[1.2] sm:mb-6 sm:text-5xl md:text-6xl lg:text-7xl">
             <span className="block">{t('hero.titleLine1')}</span>
-            <span className="block bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            {/* pb + looser leading: bg-clip-text otherwise clips g/p descenders */}
+            <span className="block bg-gradient-to-r from-primary to-primary/60 bg-clip-text pb-[0.15em] leading-[1.25] text-transparent">
               {t('hero.titleLine2')}
             </span>
             <span className="block">{t('hero.titleLine3')}</span>

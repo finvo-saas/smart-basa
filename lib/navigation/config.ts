@@ -125,11 +125,12 @@ export const primaryNavItems: NavItem[] = [
     labelKey: 'primary.more',
     icon: MoreHorizontal,
     roles: ['renter'],
-    matchPrefixes: ['/compare', '/complaints', '/documents', '/reminders', '/roommates', '/areas'],
+    matchPrefixes: ['/compare', '/complaints', '/documents', '/reminders', '/roommates', '/areas', '/notices'],
     children: [
       { labelKey: 'children.compareListings', href: '/compare' },
       { labelKey: 'children.compareAreas', href: '/areas/compare' },
       { labelKey: 'children.findRoommates', href: '/roommates' },
+      { labelKey: 'children.notices', href: '/notices' },
       { labelKey: 'children.complaints', href: '/complaints' },
       { labelKey: 'children.documents', href: '/documents' },
       { labelKey: 'children.reminders', href: '/reminders' },
@@ -196,6 +197,20 @@ export const primaryNavItems: NavItem[] = [
     roles: ['owner'],
     ownerVertical: 'mess',
     matchPrefixes: ['/mess'],
+    children: [
+      {
+        labelKey: 'children.myMessOps',
+        href: '/mess',
+        descriptionKey: 'children.myMessOpsDesc',
+        ownerVertical: 'mess',
+      },
+      {
+        labelKey: 'children.addMess',
+        href: '/mess?new=1',
+        descriptionKey: 'children.addMessDesc',
+        ownerVertical: 'mess',
+      },
+    ],
   },
   {
     labelKey: 'primary.finance',
@@ -430,7 +445,7 @@ export const mobileUtilityLinks: MobileUtilityLink[] = [
     labelKey: 'utility.notices',
     href: '/notices',
     icon: Bell,
-    roles: ['owner', 'admin'],
+    roles: ['renter', 'owner', 'admin'],
   },
   {
     labelKey: 'utility.profile',

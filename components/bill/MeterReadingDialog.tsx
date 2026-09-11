@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -32,29 +32,57 @@ import {
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { fetchBillsBoard } from '@/lib/api/bills'
+import { fetchOwnerPortfolioSnapshot } from '@/lib/api/buildings'
+import { getPreviousMeterReading } from '@/lib/api/bills'
 import { ok } from '@/lib/api/http'
 import { useMockQuery } from '@/hooks/useMockQuery'
 import type { MeterReading } from '@/types/bill'
 
-const meterReadingSchema = z.object({
-  propertyId: z.string().min(1, 'Property is required'),
-  propertyType: z.enum(['apartment', 'mess']),
-  flatId: z.string().optional(),
-  seatId: z.string().optional(),
-  month: z.string().min(1, 'Month is required'),
-  year: z.coerce.number().min(2020).max(2100),
-  electricity: z.coerce.number().min(0).optional(),
-  gas: z.coerce.number().min(0).optional(),
-  water: z.coerce.number().min(0).optional(),
-})
+const optionalMeterValue = z.preprocess(
+  value => {
+    if (value === '' || value === null || value === undefined) return undefined
+    const n = typeof value === 'number' ? value : Number(value)
+    return Number.isFinite(n) ? n : undefined
+  },
+  z.number().min(0).optional(),
+)
 
-type MeterReadingFormData = z.infer<typeof meterReadingSchema>
+const optionalId = z.preprocess(
+  value => (value === null || value === '' ? undefined : value),
+  z.string().optional(),
+)
+
+const meterReadingSchema = z
+  .object({
+    propertyId: z.string().min(1, 'Property is required'),
+    propertyType: z.enum(['apartment', 'mess']),
+    flatId: optionalId,
+    seatId: optionalId,
+    month: z.string().min(1, 'Month is required'),
+    year: z.coerce.number().min(2020).max(2100),
+    electricity: optionalMeterValue,
+    gas: optionalMeterValue,
+    water: optionalMeterValue,
+  })
+  .refine(
+    data =>
+      data.electricity !== undefined ||
+      data.gas !== undefined ||
+      data.water !== undefined,
+    {
+      message: 'Enter at least one meter reading',
+      path: ['electricity'],
+    },
+  )
+
+export type MeterReadingFormData = z.infer<typeof meterReadingSchema>
 
 interface MeterReadingDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: MeterReadingFormData) => void
+  onSubmit: (
+    data: MeterReadingFormData & { id?: string },
+  ) => void | Promise<void>
   reading?: MeterReading
 }
 
@@ -76,6 +104,36 @@ const months = [
 const currentYear = new Date().getFullYear()
 const currentMonth = months[new Date().getMonth()]
 
+const emptyDefaults: MeterReadingFormData = {
+  propertyId: '',
+  propertyType: 'apartment',
+  month: currentMonth,
+  year: currentYear,
+  electricity: undefined,
+  gas: undefined,
+  water: undefined,
+}
+
+function defaultsFromReading(reading: MeterReading): MeterReadingFormData {
+  return {
+    propertyId: String(reading.propertyId),
+    propertyType: reading.propertyType,
+    flatId: reading.flatId ? String(reading.flatId) : undefined,
+    seatId: reading.seatId ? String(reading.seatId) : undefined,
+    month: reading.month,
+    year: reading.year,
+    electricity: reading.electricity ?? undefined,
+    gas: reading.gas ?? undefined,
+    water: reading.water ?? undefined,
+  }
+}
+
+function parseOptionalNumber(value: string): number | undefined {
+  if (value === '') return undefined
+  const n = Number(value)
+  return Number.isFinite(n) ? n : undefined
+}
+
 export function MeterReadingDialog({
   open,
   onOpenChange,
@@ -85,60 +143,50 @@ export function MeterReadingDialog({
   const [selectedPropertyType, setSelectedPropertyType] = useState<
     'apartment' | 'mess'
   >(reading?.propertyType || 'apartment')
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(
-    reading?.propertyId || ''
-  )
-  const [selectedFlatId, setSelectedFlatId] = useState<string>(
-    reading?.flatId || ''
+  const [selectedPropertyId, setSelectedPropertyId] = useState(
+    reading?.propertyId || '',
   )
   const [previousReading, setPreviousReading] = useState<
     MeterReading | undefined
   >()
+  const [submitting, setSubmitting] = useState(false)
 
-  const loadBillsBoard = useCallback(
+  const loadPortfolio = useCallback(
     () =>
       open
-        ? fetchBillsBoard()
-        : Promise.resolve(
-            ok({
-              bills: [],
-              templates: [],
-              rules: [],
-              meterReadings: [],
-              buildings: [],
-              flats: [],
-              renters: [],
-              messList: [],
-            })
-          ),
-    [open]
+        ? fetchOwnerPortfolioSnapshot()
+        : Promise.resolve(ok({ buildings: [], flats: [], messList: [] })),
+    [open],
   )
-  const { data: billsBoard } = useMockQuery(loadBillsBoard)
+  const { data: portfolio, loading: portfolioLoading } =
+    useMockQuery(loadPortfolio)
 
   const form = useForm<MeterReadingFormData>({
     resolver: zodResolver(meterReadingSchema) as never,
-    defaultValues: reading
-      ? {
-          propertyId: reading.propertyId,
-          propertyType: reading.propertyType,
-          flatId: reading.flatId,
-          seatId: reading.seatId,
-          month: reading.month,
-          year: reading.year,
-          electricity: reading.electricity,
-          gas: reading.gas,
-          water: reading.water,
-        }
-      : {
-          propertyId: '',
-          propertyType: 'apartment',
-          month: currentMonth,
-          year: currentYear,
-          electricity: undefined,
-          gas: undefined,
-          water: undefined,
-        },
+    defaultValues: emptyDefaults,
   })
+
+  useEffect(() => {
+    if (!open) return
+    const next = reading ? defaultsFromReading(reading) : { ...emptyDefaults }
+    setSelectedPropertyType(next.propertyType)
+    setSelectedPropertyId(next.propertyId)
+    setPreviousReading(undefined)
+    form.reset(next)
+  }, [open, reading, form])
+
+  // Mess-only owners should default to Mess property type.
+  useEffect(() => {
+    if (!open || reading || portfolioLoading) return
+    const hasMess = (portfolio?.messList?.length ?? 0) > 0
+    const hasBuildings = (portfolio?.buildings?.length ?? 0) > 0
+    if (hasMess && !hasBuildings && form.getValues('propertyType') !== 'mess') {
+      setSelectedPropertyType('mess')
+      form.setValue('propertyType', 'mess')
+      form.setValue('propertyId', '')
+      setSelectedPropertyId('')
+    }
+  }, [open, reading, portfolio, portfolioLoading, form])
 
   const propertyId = form.watch('propertyId')
   const flatId = form.watch('flatId')
@@ -148,60 +196,69 @@ export function MeterReadingDialog({
   const gas = form.watch('gas')
   const water = form.watch('water')
 
-  // Load previous reading when property/flat/month changes
   useEffect(() => {
-    if (propertyId && month && year) {
-      const currentIndex = months.indexOf(month)
-      const prevMonth = currentIndex === 0 ? 'December' : months[currentIndex - 1]
-      const prevYear = currentIndex === 0 ? year - 1 : year
-      const prev = (billsBoard?.meterReadings ?? []).find(
-        item =>
-          item.propertyId === propertyId &&
-          item.flatId === (flatId || undefined) &&
-          item.seatId === undefined &&
-          item.month === prevMonth &&
-          item.year === prevYear
-      )
-      setPreviousReading(prev)
-    } else {
+    if (!open || !propertyId || !month || !year) {
       setPreviousReading(undefined)
+      return
     }
-  }, [propertyId, flatId, month, year, billsBoard])
+    let cancelled = false
+    getPreviousMeterReading(
+      propertyId,
+      flatId || undefined,
+      undefined,
+      month,
+      Number(year),
+    ).then(prev => {
+      if (!cancelled) setPreviousReading(prev)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [open, propertyId, flatId, month, year])
 
-  const handleSubmit = (data: MeterReadingFormData) => {
-    onSubmit(data)
-    if (!reading) {
-      form.reset()
-      setPreviousReading(undefined)
+  const handleSubmit = async (data: MeterReadingFormData) => {
+    setSubmitting(true)
+    try {
+      await onSubmit({
+        ...data,
+        flatId: data.flatId || undefined,
+        seatId: data.seatId || undefined,
+        ...(reading?.id ? { id: reading.id } : {}),
+      })
+    } finally {
+      setSubmitting(false)
     }
   }
 
   const properties =
     selectedPropertyType === 'apartment'
-      ? (billsBoard?.buildings ?? [])
-      : (billsBoard?.messList ?? [])
+      ? (portfolio?.buildings ?? [])
+      : (portfolio?.messList ?? [])
   const availableFlats = selectedPropertyId
-    ? (billsBoard?.flats ?? []).filter(f => f.buildingId === selectedPropertyId)
+    ? (portfolio?.flats ?? []).filter(f => f.buildingId === selectedPropertyId)
     : []
 
-  // Calculate consumption
   const electricityConsumption =
-    electricity && previousReading?.electricity
+    electricity !== undefined && previousReading?.electricity !== undefined
       ? electricity - previousReading.electricity
       : undefined
   const gasConsumption =
-    gas && previousReading?.gas ? gas - previousReading.gas : undefined
+    gas !== undefined && previousReading?.gas !== undefined
+      ? gas - previousReading.gas
+      : undefined
   const waterConsumption =
-    water && previousReading?.water ? water - previousReading.water : undefined
+    water !== undefined && previousReading?.water !== undefined
+      ? water - previousReading.water
+      : undefined
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="flex max-h-[calc(100dvh-1rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-h-[calc(100dvh-4rem)]">
+        <DialogHeader className="shrink-0 space-y-1 border-b px-4 py-4 text-left sm:px-6">
+          <DialogTitle className="pr-8 text-lg sm:text-xl">
             {reading ? 'Edit Meter Reading' : 'Add Meter Reading'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-pretty text-sm">
             {reading
               ? 'Update the meter reading information'
               : 'Record meter readings for utility bill calculation'}
@@ -211,99 +268,64 @@ export function MeterReadingDialog({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-4"
+            className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="propertyType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Property Type</FormLabel>
-                    <Select
-                      onValueChange={value => {
-                        field.onChange(value)
-                        setSelectedPropertyType(value as 'apartment' | 'mess')
-                        form.setValue('propertyId', '')
-                        form.setValue('flatId', '')
-                        setSelectedPropertyId('')
-                        setSelectedFlatId('')
-                      }}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="apartment">Apartment</SelectItem>
-                        <SelectItem value="mess">Mess</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="propertyId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Property</FormLabel>
-                    <Select
-                      onValueChange={value => {
-                        field.onChange(value)
-                        setSelectedPropertyId(value)
-                        form.setValue('flatId', '')
-                        setSelectedFlatId('')
-                      }}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select property" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {properties.map(prop => (
-                          <SelectItem key={prop.id} value={prop.id}>
-                            {prop.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {selectedPropertyType === 'apartment' &&
-              availableFlats.length > 0 && (
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="flatId"
+                  name="propertyType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Flat</FormLabel>
+                      <FormLabel>Property Type</FormLabel>
                       <Select
+                        value={field.value}
                         onValueChange={value => {
                           field.onChange(value)
-                          setSelectedFlatId(value)
+                          setSelectedPropertyType(value as 'apartment' | 'mess')
+                          form.setValue('propertyId', '')
+                          form.setValue('flatId', '')
+                          setSelectedPropertyId('')
                         }}
-                        defaultValue={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select flat" />
+                            <SelectValue />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {availableFlats.map(flat => (
-                            <SelectItem key={flat.id} value={flat.id}>
-                              {flat.flatNumber} - Floor {flat.floor}
+                          <SelectItem value="apartment">Apartment</SelectItem>
+                          <SelectItem value="mess">Mess</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="propertyId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Property</FormLabel>
+                      <Select
+                        value={field.value || undefined}
+                        onValueChange={value => {
+                          field.onChange(value)
+                          setSelectedPropertyId(value)
+                          form.setValue('flatId', '')
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select property" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {properties.map(prop => (
+                            <SelectItem key={prop.id} value={prop.id}>
+                              {prop.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -312,206 +334,238 @@ export function MeterReadingDialog({
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {selectedPropertyType === 'apartment' &&
+                availableFlats.length > 0 && (
+                  <FormField
+                    control={form.control}
+                    name="flatId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Flat</FormLabel>
+                        <Select
+                          value={field.value || undefined}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select flat" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {availableFlats.map(flat => (
+                              <SelectItem key={flat.id} value={flat.id}>
+                                {flat.flatNumber} - Floor {flat.floor}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="month"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Month</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {months.map(monthName => (
+                            <SelectItem key={monthName} value={monthName}>
+                              {monthName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="year"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Year</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {previousReading && (
+                <Card className="bg-muted/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">
+                      Previous Reading
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {previousReading.electricity !== undefined && (
+                      <div className="flex justify-between gap-3">
+                        <span className="text-muted-foreground">
+                          Electricity:
+                        </span>
+                        <span className="font-medium">
+                          {previousReading.electricity} units
+                        </span>
+                      </div>
+                    )}
+                    {previousReading.gas !== undefined && (
+                      <div className="flex justify-between gap-3">
+                        <span className="text-muted-foreground">Gas:</span>
+                        <span className="font-medium">
+                          {previousReading.gas} units
+                        </span>
+                      </div>
+                    )}
+                    {previousReading.water !== undefined && (
+                      <div className="flex justify-between gap-3">
+                        <span className="text-muted-foreground">Water:</span>
+                        <span className="font-medium">
+                          {previousReading.water} units
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               )}
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="month"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Month</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">
+                  Current Meter Readings
+                </Label>
+
+                <FormField
+                  control={form.control}
+                  name="electricity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Electricity (units)</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder="Enter current reading"
+                          value={field.value ?? ''}
+                          onChange={e =>
+                            field.onChange(parseOptionalNumber(e.target.value))
+                          }
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {months.map(month => (
-                          <SelectItem key={month} value={month}>
-                            {month}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      {electricityConsumption !== undefined && (
+                        <FormDescription>
+                          Consumption:{' '}
+                          <Badge variant="outline">
+                            {electricityConsumption} units
+                          </Badge>
+                        </FormDescription>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="year"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Year</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="gas"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gas (units)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder="Enter current reading"
+                          value={field.value ?? ''}
+                          onChange={e =>
+                            field.onChange(parseOptionalNumber(e.target.value))
+                          }
+                        />
+                      </FormControl>
+                      {gasConsumption !== undefined && (
+                        <FormDescription>
+                          Consumption:{' '}
+                          <Badge variant="outline">
+                            {gasConsumption} units
+                          </Badge>
+                        </FormDescription>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="water"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Water (units)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder="Enter current reading"
+                          value={field.value ?? ''}
+                          onChange={e =>
+                            field.onChange(parseOptionalNumber(e.target.value))
+                          }
+                        />
+                      </FormControl>
+                      {waterConsumption !== undefined && (
+                        <FormDescription>
+                          Consumption:{' '}
+                          <Badge variant="outline">
+                            {waterConsumption} units
+                          </Badge>
+                        </FormDescription>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
-            {/* Previous Reading Display */}
-            {previousReading && (
-              <Card className="bg-muted/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium">
-                    Previous Reading
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  {previousReading.electricity !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        Electricity:
-                      </span>
-                      <span className="font-medium">
-                        {previousReading.electricity} units
-                      </span>
-                    </div>
-                  )}
-                  {previousReading.gas !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Gas:</span>
-                      <span className="font-medium">
-                        {previousReading.gas} units
-                      </span>
-                    </div>
-                  )}
-                  {previousReading.water !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Water:</span>
-                      <span className="font-medium">
-                        {previousReading.water} units
-                      </span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Meter Readings */}
-            <div className="space-y-4">
-              <Label className="text-base font-semibold">
-                Current Meter Readings
-              </Label>
-
-              <FormField
-                control={form.control}
-                name="electricity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Electricity (units)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="Enter current reading"
-                        {...field}
-                        onChange={e => {
-                          const value = e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined
-                          field.onChange(value)
-                        }}
-                      />
-                    </FormControl>
-                    {electricityConsumption !== undefined && (
-                      <FormDescription>
-                        Consumption:{' '}
-                        <Badge variant="outline">
-                          {electricityConsumption} units
-                        </Badge>
-                      </FormDescription>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="gas"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Gas (units)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="Enter current reading"
-                        {...field}
-                        onChange={e => {
-                          const value = e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined
-                          field.onChange(value)
-                        }}
-                      />
-                    </FormControl>
-                    {gasConsumption !== undefined && (
-                      <FormDescription>
-                        Consumption:{' '}
-                        <Badge variant="outline">{gasConsumption} units</Badge>
-                      </FormDescription>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="water"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Water (units)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="Enter current reading"
-                        {...field}
-                        onChange={e => {
-                          const value = e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined
-                          field.onChange(value)
-                        }}
-                      />
-                    </FormControl>
-                    {waterConsumption !== undefined && (
-                      <FormDescription>
-                        Consumption:{' '}
-                        <Badge variant="outline">
-                          {waterConsumption} units
-                        </Badge>
-                      </FormDescription>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end pt-4 border-t">
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  form.reset()
-                  setPreviousReading(undefined)
-                  onOpenChange(false)
-                }}
+                className="w-full sm:w-auto"
+                disabled={submitting}
+                onClick={() => onOpenChange(false)}
               >
                 Cancel
               </Button>
-              <Button type="submit">
-                {reading ? 'Update Reading' : 'Save Reading'}
+              <Button
+                type="submit"
+                className="w-full sm:w-auto"
+                disabled={submitting || portfolioLoading}
+              >
+                {submitting
+                  ? 'Saving…'
+                  : reading
+                    ? 'Update Reading'
+                    : 'Save Reading'}
               </Button>
             </div>
           </form>

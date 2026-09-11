@@ -25,6 +25,8 @@ export interface MessUtilityProfile {
   emergencyLight?: boolean
   meterType?: string
   billSplitMethod?: string
+  /** Freeform owner key → value pairs */
+  manual?: Record<string, string>
 }
 
 export interface MessReliabilityScore {
@@ -210,6 +212,8 @@ export interface MessMember {
   messId: string
   messName?: string
   userId?: string
+  /** True when this member is linked to a login account. */
+  isSystemUser?: boolean
   name: string
   phone: string
   /** Renter's WhatsApp number so owners can message instead of calling. */
@@ -286,7 +290,16 @@ export interface Notice {
   content: string
   date: string
   priority: 'high' | 'medium' | 'low'
-  messId: string
+  messId?: string
+  buildingId?: string
+  buildingName?: string
+  flatIds?: string[]
+  /** Unified ops scope */
+  scopeType?: 'mess' | 'building' | 'hotel'
+  scopeId?: string
+  scopeName?: string
+  targetIds?: string[]
+  source?: 'mess' | 'building' | 'hotel'
   category?:
     | 'general'
     | 'payment'
@@ -331,6 +344,9 @@ export interface Mess {
   confirmedHoursAgo?: number | null
   stale?: boolean
   listingId?: string | null
+  /** From linked marketplace listing when available */
+  latitude?: number | null
+  longitude?: number | null
   bookUrl?: string | null
   mealSystem?: MessMealSystem
   utilities?: MessUtilities

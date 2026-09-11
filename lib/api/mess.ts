@@ -38,6 +38,39 @@ export async function fetchMessById(
   return result
 }
 
+export type MessProfileInput = {
+  name: string
+  address: string
+  city: string
+  monthlyFee: number
+  gender: 'male' | 'female' | 'mixed'
+  facilities?: string[]
+  images?: string[]
+  description?: string
+  totalSeats?: number
+  publishListing?: boolean
+  listingId?: string | null
+}
+
+export async function createMess(
+  input: MessProfileInput,
+): Promise<ApiResult<Mess>> {
+  return apiRequest<Mess>('/mess/', {
+    method: 'POST',
+    body: input,
+  })
+}
+
+export async function updateMess(
+  id: string,
+  patch: Partial<MessProfileInput>,
+): Promise<ApiResult<Mess>> {
+  return apiRequest<Mess>(`/mess/${id}/`, {
+    method: 'PATCH',
+    body: patch,
+  })
+}
+
 export async function updateMessLiveStatus(
   messId: string,
   status: Record<string, 'ok' | 'warn' | 'down'>,
@@ -79,22 +112,18 @@ export async function fetchMessExpenseSplit(
   )
 }
 
+export async function fetchMyMessMemberships(): Promise<ApiResult<MessMember[]>> {
+  if (!hasAuthTokens()) return { ok: true, data: [] }
+  return apiRequest<MessMember[]>('/mess/me/memberships/')
+}
+
 export async function fetchMessStudents(
   messId?: string,
   filters?: { q?: string; type?: OccupantType | 'all'; status?: MemberStatusFilter },
 ): Promise<ApiResult<MessMember[]>> {
   if (!messId) {
-    // Load all messes then aggregate students (student dashboard fallback)
-    const messes = await fetchMessList()
-    if (!messes.ok) return messes
-    if (!hasAuthTokens() || !messes.data.length) return { ok: true, data: [] }
-    const lists = await Promise.all(
-      messes.data.map(m =>
-        apiRequest<MessMember[]>(`/mess/${m.id}/students/`),
-      ),
-    )
-    const students = lists.flatMap(r => (r.ok ? r.data : []))
-    return { ok: true, data: students }
+    // Student dashboard: only the signed-in member's own enrollments.
+    return fetchMyMessMemberships()
   }
   if (!hasAuthTokens()) return { ok: true, data: [] }
   const params = new URLSearchParams()
@@ -226,6 +255,7 @@ export async function createNotice(
   notice: Omit<Notice, 'id' | 'createdAt' | 'acknowledgments'> & {
     id?: string
     createdAt?: string
+    messId: string
   },
 ): Promise<ApiResult<Notice>> {
   return apiRequest<Notice>(`/mess/${notice.messId}/notices/`, {

@@ -2,30 +2,38 @@
 
 import { useCallback, useMemo } from 'react'
 import { getCurrentAccountUserId } from '@/lib/api/account'
-import { fetchMessStudents } from '@/lib/api/mess'
+import { fetchMyMessMemberships } from '@/lib/api/mess'
 import { useMockQuery } from '@/hooks/useMockQuery'
 import type { Student } from '@/types/mess'
 
 /**
  * The signed-in renter's own mess record.
  *
- * Matches strictly on the account id: a boarder whose record was added by the
- * owner but never linked to an account has no record here, and must never be
- * shown someone else's.
+ * Uses ``/mess/me/memberships/`` so we never probe every public mess roster
+ * (which 403s for messes the renter does not belong to).
  */
 export function useMessStudentSelf(): {
   student: Student | undefined
+  memberships: Student[]
   loading: boolean
 } {
   const userId = getCurrentAccountUserId()
-  const loadStudents = useCallback(() => fetchMessStudents(), [])
-  const { data: students, loading } = useMockQuery(loadStudents)
+  const loadMemberships = useCallback(() => fetchMyMessMemberships(), [])
+  const { data: memberships, loading } = useMockQuery(loadMemberships)
 
-  const student = useMemo(
-    () =>
-      userId ? students?.find(s => s.userId && s.userId === userId) : undefined,
-    [students, userId]
-  )
+  const list = memberships ?? []
 
-  return { student, loading }
+  const student = useMemo(() => {
+    if (!list.length) return undefined
+    // Prefer a seated membership for the dashboard home card.
+    const seated = list.find(s => Boolean(s.seatNumber))
+    if (seated) return seated
+    if (userId) {
+      const linked = list.find(s => s.userId && s.userId === userId)
+      if (linked) return linked
+    }
+    return list[0]
+  }, [list, userId])
+
+  return { student, memberships: list, loading }
 }

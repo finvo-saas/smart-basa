@@ -47,6 +47,7 @@ const ruleSchema = z.object({
   ]),
   severity: z.enum(['minor', 'moderate', 'major', 'critical']),
   penalty: z.string().optional(),
+  status: z.enum(['active', 'inactive']),
   requiresAcceptance: z.boolean(),
   effectiveDate: z.string().optional(),
   expiryDate: z.string().optional(),
@@ -75,6 +76,7 @@ export function RuleDialog({
       category: 'general' as const,
       severity: 'minor' as const,
       penalty: '',
+      status: 'active' as const,
       requiresAcceptance: true,
       effectiveDate: '',
       expiryDate: '',
@@ -89,6 +91,7 @@ export function RuleDialog({
         category: rule.category,
         severity: rule.severity,
         penalty: rule.penalty || '',
+        status: rule.status === 'inactive' ? 'inactive' : 'active',
         requiresAcceptance: rule.requiresAcceptance,
         effectiveDate: rule.effectiveDate || '',
         expiryDate: rule.expiryDate || '',
@@ -100,6 +103,7 @@ export function RuleDialog({
         category: 'general',
         severity: 'minor',
         penalty: '',
+        status: 'active',
         requiresAcceptance: true,
         effectiveDate: new Date().toISOString().split('T')[0],
         expiryDate: '',
@@ -111,7 +115,6 @@ export function RuleDialog({
     onSubmit({
       ...data,
       messId,
-      status: 'active',
     })
     form.reset()
     onOpenChange(false)
@@ -241,6 +244,32 @@ export function RuleDialog({
                     <FormControl>
                       <Input placeholder="e.g., Fine: ৳500" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Status */}
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Inactive rules stay saved but are hidden from renters.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

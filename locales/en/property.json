@@ -52,7 +52,27 @@
     "deposit": "Deposit: {amount}",
     "listedBy": "Listed by",
     "callOwner": "Call {name}",
-    "genderOnly": "{gender} only"
+    "genderOnly": "{gender} only",
+    "negotiable": "Negotiable",
+    "serviceChargeLine": "+ {amount}/mo service charge",
+    "overview": {
+      "title": "Overview",
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "kitchens": "Kitchens",
+      "livingRooms": "Living rooms",
+      "balconies": "Balconies",
+      "size": "Size",
+      "floor": "Floor",
+      "unit": "Unit",
+      "furnishing": "Furnishing",
+      "facing": "Facing",
+      "parking": "Parking",
+      "availableFrom": "Available from",
+      "serviceCharge": "Service charge",
+      "yes": "Yes",
+      "no": "No"
+    }
   },
   "compare": {
     "title": "Compare listings",

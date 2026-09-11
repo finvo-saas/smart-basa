@@ -1,5 +1,6 @@
 export { AccountOverviewSection } from './AccountOverviewSection'
 export { ApartmentOverviewSection } from './ApartmentOverviewSection'
+export { BusinessFocusIntroBanner } from './BusinessFocusIntroBanner'
 export { HotelOverviewSection } from './HotelOverviewSection'
 export { MessOverviewSection } from './MessOverviewSection'
 export {
@@ -9,3 +10,4 @@ export {
   StatGrid,
   type QuickLink,
 } from './OwnerSection'
+

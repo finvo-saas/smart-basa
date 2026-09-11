@@ -20,6 +20,7 @@ import {
   signAgreement,
   fetchChecklists,
   createChecklist,
+  patchChecklist,
   fetchDocumentBuildings,
 } from '@/lib/api/documents'
 import { getCurrentAccountUserId } from '@/lib/api/account'
@@ -56,6 +57,8 @@ export default function DocumentsPage() {
   const [isChecklistViewOpen, setIsChecklistViewOpen] = useState(false)
   const [editingAgreement, setEditingAgreement] =
     useState<RentalAgreement | null>(null)
+  const [editingChecklist, setEditingChecklist] =
+    useState<ChecklistType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   const loadDocuments = useCallback(async () => {
@@ -255,7 +258,7 @@ export default function DocumentsPage() {
     items: ChecklistType['items']
     notes?: string
   }) => {
-    await createChecklist({
+    const payload = {
       userId,
       propertyId: data.propertyId,
       propertyName: data.propertyName,
@@ -275,9 +278,26 @@ export default function DocumentsPage() {
         (sum, item) => sum + (item.repairCost || 0),
         0
       ),
-      securityDepositAmount: activeAgreement?.securityDeposit || 0,
-      status: 'completed',
-    })
+      securityDepositAmount:
+        editingChecklist?.securityDepositAmount ||
+        activeAgreement?.securityDeposit ||
+        0,
+      status: 'completed' as const,
+    }
+    if (editingChecklist) {
+      const result = await patchChecklist(editingChecklist.id, {
+        ...editingChecklist,
+        ...payload,
+      })
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Checklist updated')
+    } else {
+      await createChecklist(payload)
+    }
+    setEditingChecklist(null)
     await loadDocuments()
   }
 
@@ -334,6 +354,14 @@ export default function DocumentsPage() {
                     agreement={agreement}
                     onView={handleAgreementView}
                     onDownload={handleAgreementDownload}
+                    onEdit={
+                      role === 'owner' || role === 'admin'
+                        ? a => {
+                            setEditingAgreement(a)
+                            setIsAgreementUploadOpen(true)
+                          }
+                        : undefined
+                    }
                   />
                 ))}
               </div>
@@ -414,16 +442,30 @@ export default function DocumentsPage() {
                               `- ${t('flat', { number: checklist.flatNumber })}`}
                           </p>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedChecklist(checklist)
-                            setIsChecklistViewOpen(true)
-                          }}
-                        >
-                          {t('viewDetails')}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedChecklist(checklist)
+                              setIsChecklistViewOpen(true)
+                            }}
+                          >
+                            {t('viewDetails')}
+                          </Button>
+                          {(role === 'owner' || role === 'admin') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingChecklist(checklist)
+                                setIsChecklistDialogOpen(true)
+                              }}
+                            >
+                              Edit
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -502,15 +544,24 @@ export default function DocumentsPage() {
           }}
           onSubmit={handleAgreementUpload}
         />
-        {activeAgreement && (
+        {(activeAgreement || editingChecklist) && (
           <ChecklistDialog
-            checklist={null}
-            propertyId={activeAgreement.propertyId}
-            propertyName={activeAgreement.propertyName}
-            flatId={activeAgreement.flatId}
-            flatNumber={activeAgreement.flatNumber}
+            checklist={editingChecklist}
+            propertyId={
+              editingChecklist?.propertyId || activeAgreement!.propertyId
+            }
+            propertyName={
+              editingChecklist?.propertyName || activeAgreement!.propertyName
+            }
+            flatId={editingChecklist?.flatId || activeAgreement?.flatId}
+            flatNumber={
+              editingChecklist?.flatNumber || activeAgreement?.flatNumber
+            }
             open={isChecklistDialogOpen}
-            onOpenChange={setIsChecklistDialogOpen}
+            onOpenChange={open => {
+              setIsChecklistDialogOpen(open)
+              if (!open) setEditingChecklist(null)
+            }}
             onSubmit={handleChecklistSubmit}
           />
         )}

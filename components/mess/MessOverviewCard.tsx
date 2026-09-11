@@ -8,12 +8,14 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { MessManageLinks } from '@/components/mess/MessManageLinks'
-import { Users, DollarSign, MapPin, Phone, UserPlus } from 'lucide-react'
+import { Users, DollarSign, MapPin, Phone, UserPlus, Pencil, Globe } from 'lucide-react'
 import type { Mess } from '@/types/mess'
 
 interface MessOverviewCardProps {
   mess: Mess
   onAssignRenter: (mess: Mess) => void
+  onEdit?: (mess: Mess) => void
+  onPublishListing?: (mess: Mess) => void
   /** Show owner management links (meals, attendance, etc.) */
   showManageLinks?: boolean
 }
@@ -21,6 +23,8 @@ interface MessOverviewCardProps {
 export function MessOverviewCard({
   mess,
   onAssignRenter,
+  onEdit,
+  onPublishListing,
   showManageLinks = true,
 }: MessOverviewCardProps) {
   const [imageError, setImageError] = useState(false)
@@ -146,13 +150,40 @@ export function MessOverviewCard({
         )}
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {onEdit && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => onEdit(mess)}
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit profile
+            </Button>
+          )}
+          {onPublishListing && !mess.listingId && (
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() => onPublishListing(mess)}
+            >
+              <Globe className="mr-2 h-4 w-4" />
+              Publish listing
+            </Button>
+          )}
+          {mess.listingId && (
+            <Button variant="outline" className="w-full" asChild>
+              <Link href={`/listings/${mess.listingId}`} target="_blank">
+                <Globe className="mr-2 h-4 w-4" />
+                View listing
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" className="w-full" asChild>
             <Link href={`/mess/${mess.id}/members`}>
               <Users className="mr-2 h-4 w-4" />
               Renters
             </Link>
           </Button>
-          {/* Enabled even when full: a renter can wait without a seat. */}
           <Button className="w-full" onClick={() => onAssignRenter(mess)}>
             <UserPlus className="mr-2 h-4 w-4" />
             Assign renter

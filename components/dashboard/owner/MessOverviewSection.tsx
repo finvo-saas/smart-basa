@@ -172,9 +172,9 @@ export function MessOverviewSection() {
           icon={<BedDouble className="h-6 w-6" />}
         />
         <StatCard
-          label="Monthly seat income"
+          label="Seat income"
           value={formatCurrency(stats.monthlyPotential)}
-          hint="Occupied seats × monthly fee"
+          hint="Monthly · occupied seats × fee"
           href="/bills"
           icon={<Wallet className="h-6 w-6" />}
         />

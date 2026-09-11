@@ -28,6 +28,12 @@ import {
 } from '@/components/property/ScoreCards'
 import { VirtualTourViewer } from '@/components/property/VirtualTourViewer'
 import { NearbyPOISection } from '@/components/map/NearbyPOISection'
+import { ListingOverview } from '@/components/property/ListingOverview'
+import { MessUtilitiesBoard } from '@/components/mess/MessUtilitiesBoard'
+import {
+  plainTextFromHtml,
+  sanitizeListingHtml,
+} from '@/components/ui/rich-text-editor'
 import { BookingForm } from '@/components/booking/BookingForm'
 import { BookingConfirmation } from '@/components/booking/BookingConfirmation'
 import { FavoriteButton } from '@/components/favorites/FavoriteButton'
@@ -282,11 +288,23 @@ export function ListingDetailClient({ id }: { id: string }) {
               </TabsContent>
             </Tabs>
 
+            <ListingOverview property={property} />
+
             <section>
               <h2 className="mb-2 text-lg font-semibold">{t('aboutPlace')}</h2>
-              <p className="leading-relaxed text-muted-foreground">
-                {property.description}
-              </p>
+              {/<[a-z][\s\S]*>/i.test(property.description) ? (
+                <div
+                  className="max-w-none space-y-2 leading-relaxed text-muted-foreground [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-foreground [&_p]:mb-2"
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeListingHtml(property.description),
+                  }}
+                />
+              ) : (
+                <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                  {plainTextFromHtml(property.description) ||
+                    property.description}
+                </p>
+              )}
             </section>
 
             <section>
@@ -321,6 +339,10 @@ export function ListingDetailClient({ id }: { id: string }) {
               lng={property.longitude}
             />
 
+            {property.utilities ? (
+              <MessUtilitiesBoard utilities={property.utilities} />
+            ) : null}
+
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
               <div className="flex gap-3">
                 <Shield className="h-5 w-5 shrink-0 text-primary" />
@@ -342,6 +364,18 @@ export function ListingDetailClient({ id }: { id: string }) {
                 </span>
                 <span className="text-muted-foreground">{t('perMonthLong')}</span>
               </div>
+              {property.rentNegotiable && (
+                <p className="mt-1 text-sm font-medium text-amber-700 dark:text-amber-400">
+                  {t('negotiable')}
+                </p>
+              )}
+              {property.serviceCharge != null && property.serviceCharge > 0 && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {t('serviceChargeLine', {
+                    amount: formatCurrency(property.serviceCharge),
+                  })}
+                </p>
+              )}
               {property.mealIncluded && (
                 <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                   <Utensils className="h-3.5 w-3.5" />
@@ -396,7 +430,10 @@ export function ListingDetailClient({ id }: { id: string }) {
               <WhatsAppButton
                 className="mt-2 w-full"
                 number={property.ownerWhatsapp}
-                message={tContact('messageOwner')}
+                message={tContact('messageOwner', {
+                  property:
+                    property.name?.trim() || tContact('propertyFallback'),
+                })}
                 label={tContact('whatsappOwner')}
               />
               <Button
@@ -437,7 +474,10 @@ export function ListingDetailClient({ id }: { id: string }) {
                 className="mt-3 w-full"
                 size="sm"
                 number={property.ownerWhatsapp}
-                message={tContact('messageOwner')}
+                message={tContact('messageOwner', {
+                  property:
+                    property.name?.trim() || tContact('propertyFallback'),
+                })}
                 showNumber
               />
             </div>

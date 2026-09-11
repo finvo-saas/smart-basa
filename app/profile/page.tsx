@@ -18,6 +18,7 @@ import { JobInfoCard } from '@/components/profile/JobInfoCard'
 import { JobInfoDialog } from '@/components/profile/JobInfoDialog'
 import { RenterHistoryDialog } from '@/components/renter/RenterHistoryDialog'
 import { useTheme } from '@/components/theme/ThemeProvider'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -43,7 +44,7 @@ import type {
   JobInfo,
   RenterProfile,
 } from '@/types/renterProfile'
-import { getVerificationStatus, logout, syncUserDisplay } from '@/utils/auth'
+import { getVerificationStatus, logout, syncUserDisplay, getProfilePhotoUrl, getDisplayName } from '@/utils/auth'
 import {
   AlertCircle,
   Check,
@@ -74,6 +75,7 @@ interface ProfileData {
   verified: boolean
   heartbeatSmsOptIn: boolean
   pushOptIn: boolean
+  profilePhotoUrl?: string | null
 }
 
 export default function ProfilePage() {
@@ -108,6 +110,7 @@ export default function ProfilePage() {
     verified: getVerificationStatus() === 'verified',
     heartbeatSmsOptIn: true,
     pushOptIn: true,
+    profilePhotoUrl: null,
   })
   const [verificationStatus, setVerificationStatusState] = useState(
     getVerificationStatus()
@@ -139,6 +142,13 @@ export default function ProfilePage() {
       setUserProfile(profileData)
     }
     setVerificationStatusState(getVerificationStatus())
+    // Show cached photo/name immediately while /accounts/me loads.
+    setProfile(prev => ({
+      ...prev,
+      name: prev.name || getDisplayName(),
+      profilePhotoUrl: getProfilePhotoUrl() || prev.profilePhotoUrl,
+      role: (role as UserRole) || prev.role,
+    }))
     void fetchCurrentUser().then(result => {
       if (!result.ok) return
       const user = result.data
@@ -152,14 +162,24 @@ export default function ProfilePage() {
         verified: getVerificationStatus() === 'verified',
         heartbeatSmsOptIn: user.heartbeatSmsOptIn !== false,
         pushOptIn: user.pushOptIn !== false,
+        profilePhotoUrl:
+          user.profilePhotoUrl || user.profilePhoto || getProfilePhotoUrl(),
       })
     })
   }, [ready, role, profileData])
 
   const persistProfile = async (updated: RenterProfile) => {
+    const previous = userProfile
     setUserProfile(updated)
-    await saveRenterProfile(profileUserId, updated)
-    refetchProfile()
+    const result = await saveRenterProfile(profileUserId, updated)
+    if (!result.ok) {
+      setUserProfile(previous)
+      toast.error(result.error || 'Could not save profile details')
+      return false
+    }
+    setUserProfile(result.data)
+    void refetchProfile()
+    return true
   }
 
   const handleSave = async (data: {
@@ -168,7 +188,7 @@ export default function ProfilePage() {
     whatsappNumber?: string
     email?: string
     photoFile?: File
-  }) => {
+  }): Promise<boolean> => {
     const result = await updateCurrentUser({
       name: data.name,
       email: data.email || '',
@@ -177,9 +197,13 @@ export default function ProfilePage() {
     })
     if (!result.ok) {
       toast.error(result.error)
-      return
+      return false
     }
     syncUserDisplay(result.data)
+    const photoUrl =
+      result.data.profilePhotoUrl ||
+      result.data.profilePhoto ||
+      getProfilePhotoUrl()
     setProfile(prev => ({
       ...prev,
       name: result.data.name || data.name,
@@ -188,8 +212,10 @@ export default function ProfilePage() {
       email: result.data.email || data.email,
       role: result.data.role,
       verified: getVerificationStatus() === 'verified',
+      profilePhotoUrl: photoUrl || prev.profilePhotoUrl,
     }))
     toast.success('Profile updated successfully!')
+    return true
   }
 
   // Document handlers
@@ -209,13 +235,14 @@ export default function ProfilePage() {
       type: data.type,
       documentNumber: data.documentNumber,
       fileUrl: uploaded.data.url,
+      fileKey: uploaded.data.key,
       fileName: data.file.name,
       fileSize: data.file.size,
       uploadedAt: new Date().toISOString(),
       expiryDate: data.expiryDate?.toISOString(),
       verificationStatus: 'pending',
     }
-    persistProfile({
+    void persistProfile({
       ...userProfile,
       documents: [...userProfile.documents, newDocument],
     })
@@ -388,9 +415,30 @@ export default function ProfilePage() {
               <CardContent className="space-y-4">
                 {/* Name */}
                 <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                    <User className="h-6 w-6 text-primary" />
-                  </div>
+                  <Avatar
+                    key={profile.profilePhotoUrl || 'no-photo'}
+                    className="h-16 w-16 border border-border shadow-sm"
+                  >
+                    <AvatarImage
+                      src={profile.profilePhotoUrl || undefined}
+                      alt={profile.name || 'Profile photo'}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {profile.name?.trim() ? (
+                        <span className="text-sm font-semibold">
+                          {profile.name
+                            .split(/\s+/)
+                            .map(p => p[0])
+                            .join('')
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </span>
+                      ) : (
+                        <User className="h-7 w-7" />
+                      )}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-lg font-semibold">{profile.name}</p>
@@ -467,8 +515,18 @@ export default function ProfilePage() {
                     <Switch
                       checked={profile.pushOptIn}
                       onCheckedChange={async checked => {
+                        const previous = profile.pushOptIn
                         setProfile(prev => ({ ...prev, pushOptIn: checked }))
-                        await updateCurrentUser({ pushOptIn: checked })
+                        const result = await updateCurrentUser({
+                          pushOptIn: checked,
+                        })
+                        if (!result.ok) {
+                          setProfile(prev => ({
+                            ...prev,
+                            pushOptIn: previous,
+                          }))
+                          toast.error(result.error)
+                        }
                       }}
                     />
                   </div>
@@ -501,13 +559,21 @@ export default function ProfilePage() {
                       <Switch
                         checked={profile.heartbeatSmsOptIn}
                         onCheckedChange={async checked => {
+                          const previous = profile.heartbeatSmsOptIn
                           setProfile(prev => ({
                             ...prev,
                             heartbeatSmsOptIn: checked,
                           }))
-                          await updateCurrentUser({
+                          const result = await updateCurrentUser({
                             heartbeatSmsOptIn: checked,
                           })
+                          if (!result.ok) {
+                            setProfile(prev => ({
+                              ...prev,
+                              heartbeatSmsOptIn: previous,
+                            }))
+                            toast.error(result.error)
+                          }
                         }}
                       />
                     </div>

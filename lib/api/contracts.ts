@@ -39,6 +39,14 @@ export type CreateComplaintRequest = {
   title: string
   description: string
   imageUrl?: string
+  category?: 'maintenance' | 'billing' | 'noise' | 'other'
+  scopeType?: 'mess' | 'building' | 'hotel'
+  scopeId?: string
+  targetId?: string
+  buildingId?: string
+  flatId?: string
+  messId?: string
+  hotelId?: string
 }
 
 /** GET /messages/chats?userId= */

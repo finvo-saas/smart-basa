@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DownloadBillButton } from '@/components/bill/DownloadBillButton'
 import { FileText } from 'lucide-react'
 import type { Bill } from '@/types/bill'
-import { format } from 'date-fns'
+import { useAppFormat } from '@/hooks/useAppFormat'
 
 interface RecentBillsProps {
   bills: Bill[]
@@ -20,84 +21,82 @@ export function RecentBills({
   limit = 3,
   showViewAll = true,
 }: RecentBillsProps) {
+  const t = useTranslations('dashboard')
+  const { formatCurrency, formatDate } = useAppFormat()
   if (bills.length === 0) return null
 
   const recentBills = bills.slice(0, limit)
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-          <FileText className="h-5 w-5 text-primary" />
-          Recent Bills
+    <Card className="overflow-hidden rounded-2xl shadow-none">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-3 sm:px-6">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <FileText className="h-4 w-4 text-teal-700 dark:text-teal-300" />
+          {t('bills')}
         </CardTitle>
         {showViewAll && (
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/bills">View All</Link>
+          <Button asChild variant="ghost" size="sm" className="h-8 px-2">
+            <Link href="/bills">View all</Link>
           </Button>
         )}
       </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {recentBills.map(bill => {
-            const isOverdue =
-              bill.status === 'unpaid' && new Date(bill.dueDate) < new Date()
-            return (
-              <div
-                key={bill.id}
-                className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-semibold text-sm md:text-base">
-                      {bill.month} {bill.year}
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className={
-                        bill.status === 'paid'
-                          ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400'
-                          : isOverdue
-                            ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400'
-                            : 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400'
-                      }
-                    >
-                      {bill.status === 'paid'
-                        ? 'Paid'
+      <CardContent className="space-y-2 px-4 pb-4 sm:px-6">
+        {recentBills.map(bill => {
+          const isOverdue =
+            bill.status === 'unpaid' && new Date(bill.dueDate) < new Date()
+          return (
+            <div
+              key={bill.id}
+              className="flex items-center gap-3 rounded-xl border bg-background p-3"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold">
+                    {bill.month} {bill.year}
+                  </p>
+                  <Badge
+                    variant="outline"
+                    className={
+                      bill.status === 'paid'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                         : isOverdue
-                          ? 'Overdue'
-                          : 'Pending'}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {bill.propertyName} • {bill.flatNumber || bill.seatNumber}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Due: {format(new Date(bill.dueDate), 'MMM dd, yyyy')}
-                  </p>
+                          ? 'border-red-200 bg-red-50 text-red-700'
+                          : 'border-amber-200 bg-amber-50 text-amber-800'
+                    }
+                  >
+                    {bill.status === 'paid'
+                      ? 'Paid'
+                      : isOverdue
+                        ? 'Overdue'
+                        : 'Due'}
+                  </Badge>
                 </div>
-                <div className="ml-4 flex flex-col items-end gap-2">
-                  <p className="text-lg font-bold text-primary">
-                    ৳{bill.amount.toLocaleString()}
-                  </p>
-                  <div className="flex gap-2">
-                    <DownloadBillButton
-                      bill={bill}
-                      size="sm"
-                      simple
-                      label="Receipt"
-                    />
-                    {bill.status === 'unpaid' && (
-                      <Button asChild variant="outline" size="sm">
-                        <Link href="/bills">Pay</Link>
-                      </Button>
-                    )}
-                  </div>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {bill.propertyName}
+                  {bill.flatNumber || bill.seatNumber
+                    ? ` · ${bill.flatNumber || bill.seatNumber}`
+                    : ''}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Due {formatDate(bill.dueDate)}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <p className="text-base font-bold tabular-nums">
+                  {formatCurrency(bill.amount)}
+                </p>
+                <div className="flex gap-1.5">
+                  <DownloadBillButton bill={bill} size="sm" simple label="PDF" />
+                  {bill.status !== 'paid' && (
+                    <Button asChild size="sm" className="h-8 px-3 text-xs">
+                      <Link href="/payments">Pay</Link>
+                    </Button>
+                  )}
                 </div>
               </div>
-            )
-          })}
-        </div>
+            </div>
+          )
+        })}
       </CardContent>
     </Card>
   )

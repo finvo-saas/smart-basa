@@ -99,8 +99,9 @@ export function QuickLinkGrid({ links }: { links: QuickLink[] }) {
 }
 
 export function StatGrid({ children }: { children: React.ReactNode }) {
+  // Stay 1-col through the awkward 360–639px band; 2-col from sm (640px).
   return (
-    <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 md:gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
       {children}
     </div>
   )

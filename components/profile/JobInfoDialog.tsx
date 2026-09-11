@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -79,6 +79,21 @@ export function JobInfoDialog({
         : undefined,
     },
   })
+
+  useEffect(() => {
+    if (!open) return
+    form.reset({
+      type: initialData?.type || 'student',
+      jobTitle: initialData?.jobTitle || '',
+      company: initialData?.company || '',
+      instituteName: initialData?.instituteName || '',
+      studentId: initialData?.studentId || '',
+      department: initialData?.department || '',
+      employmentStartDate: initialData?.employmentStartDate
+        ? new Date(initialData.employmentStartDate)
+        : undefined,
+    })
+  }, [open, initialData, form])
 
   const jobType = form.watch('type')
 

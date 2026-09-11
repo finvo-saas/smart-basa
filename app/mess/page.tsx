@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Layout } from '@/components/layout/Layout'
 import {
@@ -12,26 +13,28 @@ import {
 } from '@/components/page'
 import { MessOverviewCard } from '@/components/mess/MessOverviewCard'
 import { MemberFormDialog } from '@/components/mess/MemberFormDialog'
+import { AddMessDialog } from '@/components/mess/AddMessDialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useStoredRole } from '@/hooks/useStoredRole'
 import { useMockQuery } from '@/hooks/useMockQuery'
 import {
   assignMessStudent,
+  ensureMessListing,
   fetchMessList,
   type MessMemberInput,
 } from '@/lib/api/mess'
 import { toast } from '@/lib/feedback/toast'
 import type { Mess } from '@/types/mess'
-import { LayoutDashboard, GraduationCap, Building2 } from 'lucide-react'
+import { LayoutDashboard, GraduationCap, Building2, Plus } from 'lucide-react'
 import { MessOnboardingDialog } from '@/components/onboarding'
 import { ok } from '@/lib/api/http'
 
 export default function MessOverviewPage() {
   const t = useTranslations('mess')
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { ready, isOwner, isRenter } = useStoredRole()
-  // Wait until role is known so owners never briefly (or permanently via race)
-  // get the public full mess catalog on this management page.
   const loadMesses = useCallback(() => {
     if (!ready) {
       return Promise.resolve(ok([] as Mess[]))
@@ -39,7 +42,6 @@ export default function MessOverviewPage() {
     if (isOwner) {
       return fetchMessList({ mine: true })
     }
-    // Renters don't use this grid; keep empty until redirect UI renders.
     return Promise.resolve(ok([] as Mess[]))
   }, [ready, isOwner])
   const { data: messList, loading, refetch } = useMockQuery(loadMesses)
@@ -48,11 +50,49 @@ export default function MessOverviewPage() {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false)
   const [assignMessage, setAssignMessage] = useState<string | null>(null)
   const [localMesses, setLocalMesses] = useState<Mess[] | null>(null)
+  const [messDialogOpen, setMessDialogOpen] = useState(false)
+  const [editingMess, setEditingMess] = useState<Mess | null>(null)
   const displayMesses = localMesses ?? messes
+
+  useEffect(() => {
+    if (!ready || !isOwner) return
+    if (searchParams.get('new') === '1') {
+      setEditingMess(null)
+      setMessDialogOpen(true)
+      router.replace('/mess', { scroll: false })
+    }
+  }, [ready, isOwner, searchParams, router])
+
+  const upsertLocal = (mess: Mess) => {
+    setLocalMesses(prev => {
+      const base = prev ?? messes
+      const idx = base.findIndex(m => m.id === mess.id)
+      if (idx < 0) return [mess, ...base]
+      const next = [...base]
+      next[idx] = mess
+      return next
+    })
+    void refetch()
+  }
 
   const handleAssignRenter = (mess: Mess) => {
     setSelectedMess(mess)
     setIsAssignDialogOpen(true)
+  }
+
+  const handleEditMess = (mess: Mess) => {
+    setEditingMess(mess)
+    setMessDialogOpen(true)
+  }
+
+  const handlePublishListing = async (mess: Mess) => {
+    const result = await ensureMessListing(mess.id)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    upsertLocal(result.data.mess)
+    toast.success(t('overview.publishSuccess'))
   }
 
   const handleAssign = async (data: MessMemberInput) => {
@@ -64,7 +104,6 @@ export default function MessOverviewPage() {
       return false
     }
 
-    // Always refresh the owner's own messes only (never the public catalog).
     const listResult = await fetchMessList({ mine: true })
     if (listResult.ok) {
       setLocalMesses(listResult.data)
@@ -77,7 +116,7 @@ export default function MessOverviewPage() {
                 ...m,
                 availableSeats: Math.max(0, m.availableSeats - 1),
               }
-            : m
+            : m,
         )
       })
     }
@@ -93,7 +132,7 @@ export default function MessOverviewPage() {
         : t('overview.assignSuccessNoSeat', {
             name: data.name,
             mess: selectedMess.name,
-          })
+          }),
     )
     return true
   }
@@ -148,17 +187,33 @@ export default function MessOverviewPage() {
   return (
     <Layout>
       <PageContainer>
-        <MessOnboardingDialog />
+        <MessOnboardingDialog
+          onAddMess={() => {
+            setEditingMess(null)
+            setMessDialogOpen(true)
+          }}
+        />
         <PageHeader
           title={t('overview.ownerTitle')}
           description={t('overview.ownerDescription')}
           actions={
-            <Button variant="outline" asChild>
-              <Link href="/mess/student-dashboard">
-                <GraduationCap className="mr-2 h-4 w-4" />
-                {t('overview.previewStudentView')}
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" asChild>
+                <Link href="/mess/student-dashboard">
+                  <GraduationCap className="mr-2 h-4 w-4" />
+                  {t('overview.previewStudentView')}
+                </Link>
+              </Button>
+              <Button
+                onClick={() => {
+                  setEditingMess(null)
+                  setMessDialogOpen(true)
+                }}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t('overview.addMess')}
+              </Button>
+            </div>
           }
         />
 
@@ -173,7 +228,17 @@ export default function MessOverviewPage() {
             title={t('overview.emptyTitle')}
             description={t('overview.emptyDesc')}
             icon={Building2}
-          />
+          >
+            <Button
+              onClick={() => {
+                setEditingMess(null)
+                setMessDialogOpen(true)
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {t('overview.addMess')}
+            </Button>
+          </EmptyState>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {displayMesses.map(mess => (
@@ -181,6 +246,8 @@ export default function MessOverviewPage() {
                 key={mess.id}
                 mess={mess}
                 onAssignRenter={handleAssignRenter}
+                onEdit={handleEditMess}
+                onPublishListing={handlePublishListing}
                 showManageLinks={isOwner}
               />
             ))}
@@ -195,6 +262,23 @@ export default function MessOverviewPage() {
             if (!open) setSelectedMess(null)
           }}
           onSubmit={handleAssign}
+        />
+
+        <AddMessDialog
+          open={messDialogOpen}
+          onOpenChange={open => {
+            setMessDialogOpen(open)
+            if (!open) setEditingMess(null)
+          }}
+          mess={editingMess}
+          onSaved={mess => {
+            upsertLocal(mess)
+            toast.success(
+              editingMess
+                ? t('overview.updateSuccess')
+                : t('overview.createSuccess'),
+            )
+          }}
         />
       </PageContainer>
     </Layout>

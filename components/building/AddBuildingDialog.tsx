@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -22,8 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import type { Building } from '@/types/building'
-import { createBuilding } from '@/lib/api/buildings'
-import { useState } from 'react'
+import { createBuilding, patchBuilding } from '@/lib/api/buildings'
 
 const buildingSchema = z.object({
   name: z.string().min(1, 'Building name is required'),
@@ -39,13 +39,19 @@ interface AddBuildingDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAdd: (building: Building) => void
+  /** When set, dialog edits this building instead of creating. */
+  building?: Building | null
+  onUpdate?: (building: Building) => void
 }
 
 export function AddBuildingDialog({
   open,
   onOpenChange,
   onAdd,
+  building = null,
+  onUpdate,
 }: AddBuildingDialogProps) {
+  const isEdit = Boolean(building)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const form = useForm<BuildingFormData>({
@@ -59,9 +65,42 @@ export function AddBuildingDialog({
     },
   })
 
+  useEffect(() => {
+    if (!open) return
+    if (building) {
+      form.reset({
+        name: building.name,
+        address: building.address,
+        city: building.city || 'Dhaka',
+        totalFloors: building.totalFloors || 1,
+        totalFlats: Math.max(1, building.totalFlats || 1),
+      })
+    } else {
+      form.reset({
+        name: '',
+        address: '',
+        city: 'Dhaka',
+        totalFloors: 1,
+        totalFlats: 1,
+      })
+    }
+    setError(null)
+  }, [open, building, form])
+
   const onSubmit = async (data: BuildingFormData) => {
     setSaving(true)
     setError(null)
+    if (isEdit && building) {
+      const result = await patchBuilding(building.id, data)
+      setSaving(false)
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      onUpdate?.(result.data)
+      onOpenChange(false)
+      return
+    }
     const result = await createBuilding(data)
     setSaving(false)
     if (!result.ok) {
@@ -76,9 +115,11 @@ export function AddBuildingDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add New Building</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit Building' : 'Add New Building'}</DialogTitle>
           <DialogDescription>
-            Enter the details of your new building
+            {isEdit
+              ? 'Update building name, address, and capacity'
+              : 'Enter the details of your new building'}
           </DialogDescription>
         </DialogHeader>
 
@@ -174,7 +215,6 @@ export function AddBuildingDialog({
                 variant="outline"
                 disabled={saving}
                 onClick={() => {
-                  form.reset()
                   setError(null)
                   onOpenChange(false)
                 }}
@@ -182,7 +222,11 @@ export function AddBuildingDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={saving}>
-                {saving ? 'Saving…' : 'Add Building'}
+                {saving
+                  ? 'Saving…'
+                  : isEdit
+                    ? 'Save changes'
+                    : 'Add Building'}
               </Button>
             </div>
           </form>

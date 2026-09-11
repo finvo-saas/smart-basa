@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -32,15 +33,25 @@ const schema = z.object({
   nid: z.string().min(10, 'NID is required for BD rentals'),
   address: z.string().optional(),
   jobOrInstitute: z.string().optional(),
+  deposit: z
+    .number()
+    .min(0)
+    .optional()
+    .or(z.nan())
+    .transform(v => (Number.isNaN(v) ? undefined : v)),
 })
 
 type FormValues = z.infer<typeof schema>
+
+export type AssignRenterPayload = Renter & { deposit?: number }
 
 interface AssignRenterDialogProps {
   flat: Flat | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAssign: (flat: Flat, renter: Renter) => void
+  onAssign: (flat: Flat, renter: AssignRenterPayload) => void
+  /** Edit existing tenancy details instead of assigning a new renter. */
+  mode?: 'assign' | 'edit'
 }
 
 export function AssignRenterDialog({
@@ -48,7 +59,9 @@ export function AssignRenterDialog({
   open,
   onOpenChange,
   onAssign,
+  mode = 'assign',
 }: AssignRenterDialogProps) {
+  const isEdit = mode === 'edit'
   const tContact = useTranslations('contact')
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
@@ -60,20 +73,50 @@ export function AssignRenterDialog({
       nid: '',
       address: '',
       jobOrInstitute: '',
+      deposit: undefined,
     },
   })
 
+  useEffect(() => {
+    if (!open || !flat) return
+    if (isEdit && flat.renter) {
+      form.reset({
+        name: flat.renter.name || '',
+        phone: flat.renter.phone || '',
+        whatsapp: flat.renter.whatsapp || '',
+        email: flat.renter.email || '',
+        nid: flat.renter.nid || '',
+        address: flat.renter.address || '',
+        jobOrInstitute: '',
+        deposit: flat.deposit ?? undefined,
+      })
+    } else {
+      form.reset({
+        name: '',
+        phone: '',
+        whatsapp: '',
+        email: '',
+        nid: '',
+        address: '',
+        jobOrInstitute: '',
+        deposit: undefined,
+      })
+    }
+  }, [open, flat, isEdit, form])
+
   const handleSubmit = (data: FormValues) => {
     if (!flat) return
-    const renter: Renter = {
-      id: `renter-${Date.now()}`,
+    const renter: AssignRenterPayload = {
+      id: flat.renter?.id || `renter-${Date.now()}`,
       name: data.name.trim(),
       phone: data.phone.trim(),
       whatsapp: data.whatsapp?.trim() || undefined,
       email: data.email?.trim() || undefined,
       nid: data.nid.trim(),
       address: data.address?.trim() || data.jobOrInstitute?.trim() || undefined,
-      joinedDate: new Date().toISOString().slice(0, 10),
+      joinedDate:
+        flat.renter?.joinedDate || new Date().toISOString().slice(0, 10),
+      deposit: data.deposit,
     }
     onAssign(flat, renter)
     form.reset()
@@ -85,10 +128,13 @@ export function AssignRenterDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            Assign renter{flat ? ` · Flat ${flat.flatNumber}` : ''}
+            {isEdit ? 'Edit renter' : 'Assign renter'}
+            {flat ? ` · Flat ${flat.flatNumber}` : ''}
           </DialogTitle>
           <DialogDescription>
-            Capture NID and contact details for Bangladesh rental compliance.
+            {isEdit
+              ? 'Update contact, NID, and deposit for this tenancy.'
+              : 'Capture NID and contact details for Bangladesh rental compliance.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -186,6 +232,31 @@ export function AssignRenterDialog({
             />
             <FormField
               control={form.control}
+              name="deposit"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Advance / deposit (optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="e.g. 24000"
+                      value={field.value ?? ''}
+                      onChange={e => {
+                        const v = e.target.value
+                        field.onChange(v === '' ? undefined : parseFloat(v))
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Security deposit or advance rent collected at move-in.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="jobOrInstitute"
               render={({ field }) => (
                 <FormItem>
@@ -220,7 +291,7 @@ export function AssignRenterDialog({
                 Cancel
               </Button>
               <Button type="submit" className="flex-1">
-                Assign renter
+                {isEdit ? 'Save changes' : 'Assign renter'}
               </Button>
             </div>
           </form>

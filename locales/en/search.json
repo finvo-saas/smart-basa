@@ -41,6 +41,13 @@
       "buildingAge": "Building age (max: {value} years)",
       "buildingAgeAny": "Any",
       "floorLevel": "Floor level (max: {value})",
+      "apartmentSection": "Apartment layout",
+      "bedrooms": "Bedrooms (min)",
+      "bathrooms": "Bathrooms (min)",
+      "bedroomsMin": "{count}+ beds",
+      "bathroomsMin": "{count}+ baths",
+      "sizeSqftMin": "Min size (sqft): {value}",
+      "tenantType": "Preferred for",
       "locationSearch": "Location search",
       "searchRadius": "Search radius:",
       "filterByDistance": "Filter by distance",
@@ -53,6 +60,12 @@
       "selectSeatType": "Select seat type",
       "selectMealPlan": "Select meal plan",
       "selectFurnishing": "Select furnishing"
+    },
+    "tenantTypes": {
+      "any": "Anyone",
+      "family": "Family",
+      "bachelor": "Bachelor",
+      "office": "Office"
     },
     "ai": {
       "placeholder": "Describe the home you need in Bangla or English…",

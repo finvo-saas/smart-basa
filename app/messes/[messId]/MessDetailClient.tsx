@@ -26,6 +26,7 @@ import { CalendarCheck, MapPin, Phone, Users, UtensilsCrossed } from 'lucide-rea
 import { MessLiveStatusBoard } from '@/components/mess/MessLiveStatusBoard'
 import { MessPublicMealCalendar } from '@/components/mess/MessPublicMealCalendar'
 import { MessUtilitiesBoard } from '@/components/mess/MessUtilitiesBoard'
+import { NearbyPOISection } from '@/components/map/NearbyPOISection'
 import { getStoredRole } from '@/utils/auth'
 import { toast } from '@/lib/feedback/toast'
 import { hasAuthTokens } from '@/utils/auth-tokens'
@@ -209,6 +210,8 @@ export function MessDetailClient() {
             {mealCalendar ? <MessPublicMealCalendar calendar={mealCalendar} /> : null}
             {utilities ? <MessUtilitiesBoard utilities={utilities} /> : null}
 
+            <NearbyPOISection lat={mess.latitude} lng={mess.longitude} />
+
             {liveStatus ? (
               <MessLiveStatusBoard
                 status={liveStatus.status || {}}
@@ -321,7 +324,9 @@ export function MessDetailClient() {
                 <WhatsAppButton
                   className="w-full"
                   number={mess.ownerWhatsapp}
-                  message={tContact('messageOwner')}
+                  message={tContact('messageOwner', {
+                    property: mess.name?.trim() || tContact('propertyFallback'),
+                  })}
                   label={tContact('whatsappOwner')}
                 />
                 {!hasAuthTokens() ? (

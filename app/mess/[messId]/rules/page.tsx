@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Layout } from '@/components/layout/Layout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -56,6 +56,7 @@ export default function RulesManagementPage() {
   const [editingRule, setEditingRule] = useState<MessRule | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [severityFilter, setSeverityFilter] = useState<string>('all')
+  const [ruleStatusFilter, setRuleStatusFilter] = useState<string>('all')
 
   const currentStudentId = getCurrentAccountUserId()
   const ownerId = getCurrentAccountUserId()
@@ -74,6 +75,16 @@ export default function RulesManagementPage() {
     [studentAcceptances]
   )
 
+  const visibleRules = useMemo(() => {
+    let list = rules
+    if (role === 'renter') {
+      list = list.filter(r => r.status === 'active')
+    } else if (ruleStatusFilter !== 'all') {
+      list = list.filter(r => r.status === ruleStatusFilter)
+    }
+    return list
+  }, [rules, ruleStatusFilter, role])
+
   const filteredViolations = useMemo(() => {
     let filtered = violations
 
@@ -89,9 +100,19 @@ export default function RulesManagementPage() {
 
   const handleRuleSubmit = async (data: Parameters<typeof addRule>[0]) => {
     if (editingRule) {
-      await updateRule(editingRule.id, { ...data, messId })
+      const updated = await updateRule(editingRule.id, { ...data, messId })
+      if (!updated) {
+        toast.error(t('rules.updateFailed'))
+        return
+      }
+      toast.success(t('rules.updateSuccess'))
     } else {
-      await addRule(data)
+      const created = await addRule(data)
+      if (!created) {
+        toast.error(t('rules.createFailed'))
+        return
+      }
+      toast.success(t('rules.createSuccess'))
     }
     setRules(await getRulesByMess(messId))
     setEditingRule(null)
@@ -108,12 +129,36 @@ export default function RulesManagementPage() {
     setRules(await getRulesByMess(messId))
   }
 
+  const handleToggleRuleStatus = async (rule: MessRule) => {
+    const nextStatus = rule.status === 'active' ? 'inactive' : 'active'
+    const updated = await updateRule(rule.id, {
+      messId,
+      status: nextStatus,
+    })
+    if (!updated) {
+      toast.error(t('rules.updateFailed'))
+      return
+    }
+    toast.success(
+      nextStatus === 'active'
+        ? t('rules.activatedSuccess')
+        : t('rules.deactivatedSuccess'),
+    )
+    setRules(await getRulesByMess(messId))
+  }
+
   const handleAcceptRule = async (rule: MessRule) => {
     const result = await acceptRule(messId, rule.id)
     if (result) {
+      setStudentAcceptances(prev => {
+        if (prev.some(a => a.ruleId === rule.id)) return prev
+        return [...prev, result]
+      })
       setRules(await getRulesByMess(messId))
       toast.success(t('rules.acceptSuccess'))
+      return
     }
+    toast.error(tc('error'))
   }
 
   const handleResolveViolation = async (violation: RuleViolation) => {
@@ -154,7 +199,7 @@ export default function RulesManagementPage() {
             <h1 className="text-2xl font-bold mb-2">
               {t('rules.managementTitle')}
             </h1>
-            <p className="text-muted-foreground">{mess.name}</p>
+            <p className="text-muted-foreground">{mess?.name ?? '…'}</p>
           </div>
           {isOwner && (
             <Button
@@ -192,15 +237,54 @@ export default function RulesManagementPage() {
 
           {/* Rules Tab */}
           <TabsContent value="rules" className="space-y-4">
-            {rules.length > 0 ? (
+            {isOwner && rules.length > 0 && (
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Select
+                  value={ruleStatusFilter}
+                  onValueChange={setRuleStatusFilter}
+                >
+                  <SelectTrigger className="w-auto min-w-[9rem]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      {t('rules.allRuleStatus')}
+                    </SelectItem>
+                    <SelectItem value="active">
+                      {t('rules.ruleStatus.active')}
+                    </SelectItem>
+                    <SelectItem value="inactive">
+                      {t('rules.ruleStatus.inactive')}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {visibleRules.length > 0 ? (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {rules.map(rule => (
+                {visibleRules.map(rule => (
                   <RuleCard
                     key={rule.id}
                     rule={rule}
                     isAccepted={acceptedRuleIds.has(rule.id)}
                     onAccept={isRenter ? handleAcceptRule : undefined}
-                    showActions={isRenter}
+                    onEdit={
+                      isOwner
+                        ? r => {
+                            setEditingRule(r)
+                            setIsRuleDialogOpen(true)
+                          }
+                        : undefined
+                    }
+                    onDelete={
+                      isOwner ? r => void handleRuleDelete(r.id) : undefined
+                    }
+                    onToggleStatus={
+                      isOwner
+                        ? r => void handleToggleRuleStatus(r)
+                        : undefined
+                    }
+                    showActions={isOwner || isRenter}
                   />
                 ))}
               </div>
@@ -209,10 +293,17 @@ export default function RulesManagementPage() {
                 <CardContent className="py-12 text-center">
                   <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                   <p className="text-muted-foreground mb-4">
-                    {t('rules.emptyRules')}
+                    {rules.length > 0
+                      ? t('rules.emptyFilteredRules')
+                      : t('rules.emptyRules')}
                   </p>
-                  {isOwner && (
-                    <Button onClick={() => setIsRuleDialogOpen(true)}>
+                  {isOwner && rules.length === 0 && (
+                    <Button
+                      onClick={() => {
+                        setEditingRule(null)
+                        setIsRuleDialogOpen(true)
+                      }}
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       {t('rules.createFirstRule')}
                     </Button>

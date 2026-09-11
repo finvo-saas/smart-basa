@@ -17,6 +17,11 @@ import {
 import { ArrowLeft } from 'lucide-react'
 import { requestOtp, verifyOtp } from '@/lib/api/auth'
 import { applyAuthSession, nextPathAfterAuth } from '@/utils/auth'
+import {
+  authStorageGet,
+  authStorageRemove,
+  authStorageSet,
+} from '@/utils/auth-storage'
 
 export default function OTPVerify() {
   const router = useRouter()
@@ -31,10 +36,7 @@ export default function OTPVerify() {
   const [hasAutoRead, setHasAutoRead] = useState(false)
 
   useEffect(() => {
-    const stored =
-      typeof window !== 'undefined'
-        ? sessionStorage.getItem('loginPhone')
-        : null
+    const stored = authStorageGet('loginPhone')
     if (!stored) {
       router.push('/login')
       return
@@ -44,11 +46,10 @@ export default function OTPVerify() {
 
   useEffect(() => {
     if (!phone || hasAutoRead) return
-    const devOtp =
-      typeof window !== 'undefined' ? sessionStorage.getItem('devOtp') : null
+    const devOtp = authStorageGet('devOtp')
     // Only autofill when backend explicitly sent a console/dev OTP (no live SMS)
     if (!devOtp || !/^\d{6}$/.test(devOtp)) {
-      sessionStorage.removeItem('devOtp')
+      authStorageRemove('devOtp')
       setHasAutoRead(true)
       return
     }
@@ -114,10 +115,10 @@ export default function OTPVerify() {
       return
     }
     if (result.data.devOtp) {
-      sessionStorage.setItem('devOtp', result.data.devOtp)
+      authStorageSet('devOtp', result.data.devOtp)
       setOtp(result.data.devOtp.split(''))
     } else {
-      sessionStorage.removeItem('devOtp')
+      authStorageRemove('devOtp')
       setOtp(['', '', '', '', '', ''])
     }
     setTimer(60)
@@ -125,8 +126,8 @@ export default function OTPVerify() {
   }
 
   const handleChangeNumber = () => {
-    sessionStorage.removeItem('loginPhone')
-    sessionStorage.removeItem('devOtp')
+    authStorageRemove('loginPhone')
+    authStorageRemove('devOtp')
     router.push('/login')
   }
 

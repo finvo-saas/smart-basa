@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { loginWithPin, requestOtp, startLogin } from '@/lib/api/auth'
 import { applyAuthSession, nextPathAfterAuth } from '@/utils/auth'
+import { authStorageRemove, authStorageSet } from '@/utils/auth-storage'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -47,11 +48,11 @@ export default function Login() {
   }
 
   const goToOtp = (devOtp?: string) => {
-    sessionStorage.setItem('loginPhone', phone)
+    authStorageSet('loginPhone', phone)
     if (devOtp) {
-      sessionStorage.setItem('devOtp', devOtp)
+      authStorageSet('devOtp', devOtp)
     } else {
-      sessionStorage.removeItem('devOtp')
+      authStorageRemove('devOtp')
     }
     router.push('/otp-verify')
   }
@@ -74,7 +75,7 @@ export default function Login() {
       return
     }
 
-    sessionStorage.setItem('loginPhone', phone)
+    authStorageSet('loginPhone', phone)
     if (result.data.next === 'pin') {
       setStep('pin')
       setPin('')
@@ -115,7 +116,7 @@ export default function Login() {
       setError(result.error)
       return
     }
-    sessionStorage.setItem('pinReset', 'true')
+    authStorageSet('pinReset', 'true')
     goToOtp(result.data.devOtp)
   }
 

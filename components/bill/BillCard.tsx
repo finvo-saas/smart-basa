@@ -3,9 +3,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, Home, User, Zap, Calculator, Clock, Wallet } from 'lucide-react'
+import { Calendar, Home, User, Zap, Calculator, Clock, Wallet, Pencil } from 'lucide-react'
 import type { Bill } from '@/types/bill'
 import { DownloadBillButton } from '@/components/bill/DownloadBillButton'
+import { ShareBillWhatsAppButton } from '@/components/bill/ShareBillWhatsAppButton'
+import { RemindDueButton } from '@/components/bill/RemindDueButton'
 import { formatCurrency } from '@/lib/format/locale'
 import { cn } from '@/lib/utils'
 
@@ -17,9 +19,17 @@ interface BillCardProps {
   onSchedulePayment?: (bill: Bill) => void
   /** Renter Pay Now checkout */
   onPayNow?: (bill: Bill) => void
+  /** Owner: edit generated bill fields / line items */
+  onEdit?: (bill: Bill) => void
   showTenantName?: boolean
   /** Hide download control */
   hideDownload?: boolean
+  /** Owner: send bill PDF link via WhatsApp (tenant-wise) */
+  enableWhatsAppShare?: boolean
+  onWhatsAppShared?: (billId: string, sharedAt: string) => void
+  /** Owner: due reminder (WhatsApp / SMS, no PDF) */
+  enableDueRemind?: boolean
+  onDueReminded?: (billId: string) => void
 }
 
 const statusConfig = {
@@ -46,8 +56,13 @@ export function BillCard({
   onMarkPaid,
   onSchedulePayment,
   onPayNow,
+  onEdit,
   showTenantName = false,
   hideDownload = false,
+  enableWhatsAppShare = false,
+  onWhatsAppShared,
+  enableDueRemind = false,
+  onDueReminded,
 }: BillCardProps) {
   const status = statusConfig[bill.status]
   const isOverdue =
@@ -252,6 +267,16 @@ export function BillCard({
 
         {/* Actions */}
         <div className="flex flex-col gap-2">
+          {onEdit && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => onEdit(bill)}
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit bill
+            </Button>
+          )}
           {onPayNow && bill.status !== 'paid' && (
             <Button className="w-full" onClick={() => onPayNow(bill)}>
               <Wallet className="mr-2 h-4 w-4" />
@@ -290,6 +315,18 @@ export function BillCard({
               <Clock className="mr-2 h-4 w-4" />
               Schedule Payment
             </Button>
+          )}
+          {enableDueRemind && bill.status !== 'paid' && (
+            <RemindDueButton
+              bill={bill}
+              onReminded={() => onDueReminded?.(bill.id)}
+            />
+          )}
+          {enableWhatsAppShare && (
+            <ShareBillWhatsAppButton
+              bill={bill}
+              onShared={sharedAt => onWhatsAppShared?.(bill.id, sharedAt)}
+            />
           )}
         </div>
       </CardContent>

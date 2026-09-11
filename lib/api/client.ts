@@ -1,6 +1,6 @@
 /**
  * HTTP client for SmartBasa API.
- * Parses ApiResult envelope; attaches JWT; refreshes on 401 via httpOnly cookie.
+ * Parses ApiResult envelope; attaches JWT; refreshes on 401 via cookie and/or body refresh.
  */
 
 import {
@@ -23,16 +23,32 @@ export function getApiBaseUrl(): string {
     const internal = process.env.API_INTERNAL_URL?.trim()
     if (internal) return internal.replace(/\/$/, '')
     const raw = process.env.NEXT_PUBLIC_API_URL?.trim()
-    if (raw) return raw.replace(/\/$/, '')
+    // Relative browser path is not valid for Node fetch — hit Django directly.
+    if (raw && !raw.startsWith('/')) return raw.replace(/\/$/, '')
     return DEFAULT_API_BASE
   }
 
   const raw = process.env.NEXT_PUBLIC_API_URL?.trim()
-  // Relative path → same-origin Next rewrite (local / optional fallback)
+  // Relative path → same-origin Next rewrite (keeps refresh cookie first-party)
   if (!raw || raw.startsWith('/')) {
     return (raw || '/api/v1').replace(/\/$/, '')
   }
-  // Absolute URL (e.g. https://api.smartbasa.com/api/v1) — cross-subdomain OK
+  // Loopback host mismatch (localhost vs 127.0.0.1) breaks the refresh cookie.
+  try {
+    const apiHost = new URL(raw).hostname
+    const pageHost = window.location.hostname
+    const loopback = new Set(['localhost', '127.0.0.1'])
+    if (
+      loopback.has(pageHost) &&
+      loopback.has(apiHost) &&
+      pageHost !== apiHost
+    ) {
+      return '/api/v1'
+    }
+  } catch {
+    /* fall through */
+  }
+  // Absolute URL (e.g. https://api.smartbasa.com/api/v1)
   return raw.replace(/\/$/, '')
 }
 
@@ -47,6 +63,7 @@ type RequestOptions = {
 }
 
 function mapStatusToCode(status: number): ApiErrorCode {
+  if (status === 401) return 'UNAUTHORIZED'
   if (status === 404) return 'NOT_FOUND'
   if (status === 403) return 'FORBIDDEN'
   if (status === 409) return 'CONFLICT'
@@ -107,15 +124,73 @@ function withTrailingSlash(url: string): string {
   return `${path}/${query}${hash}`
 }
 
-/** One in-flight refresh — prevents rotate/blacklist races (400 then 200 pairs). */
+/** One in-flight refresh — prevents rotate/blacklist races. */
 let refreshInFlight: Promise<boolean> | null = null
 
-async function refreshAccessToken(): Promise<boolean> {
+/**
+ * Definitive auth failure only (invalid/missing refresh).
+ * Does NOT set the logout guard — that is reserved for explicit logout so a
+ * later visit can still restore if the httpOnly cookie is valid.
+ */
+async function markSessionExpired(): Promise<void> {
+  const { clearLocalAuthState } = await import('@/utils/auth')
+  const {
+    notifyAuthSessionChanged,
+    isLogoutGuardActive,
+  } = await import('@/lib/auth/session-events')
+
+  if (isLogoutGuardActive()) {
+    clearAuthTokens()
+    return
+  }
+
+  clearLocalAuthState()
+  notifyAuthSessionChanged()
+}
+
+type RefreshAttempt = {
+  networkError: boolean
+  result: ApiResult<{
+    access: string
+    refresh?: string
+    user?: { id: string }
+  }> | null
+}
+
+async function attemptRefresh(): Promise<RefreshAttempt> {
+  const refresh = getRefreshToken()
+  try {
+    const response = await fetch(
+      withTrailingSlash(`${getApiBaseUrl()}/auth/token/refresh/`),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(refresh ? { refresh } : {}),
+      },
+    )
+    return {
+      networkError: false,
+      result: await parseEnvelope<{
+        access: string
+        refresh?: string
+        user?: { id: string }
+      }>(response),
+    }
+  } catch {
+    return { networkError: true, result: null }
+  }
+}
+
+/** Shared refresh used by API 401 retry and cold-start restore. */
+export async function refreshAccessToken(): Promise<boolean> {
   if (refreshInFlight) {
     return refreshInFlight
   }
 
-  // Do not resurrect a session while logout is in progress / just completed.
   const { isLogoutGuardActive } = await import('@/lib/auth/session-events')
   if (isLogoutGuardActive()) {
     clearAuthTokens()
@@ -123,42 +198,39 @@ async function refreshAccessToken(): Promise<boolean> {
   }
 
   refreshInFlight = (async () => {
-    const refresh = getRefreshToken()
     try {
-      const response = await fetch(
-        withTrailingSlash(`${getApiBaseUrl()}/auth/token/refresh/`),
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify(refresh ? { refresh } : {}),
-        },
-      )
-      const result = await parseEnvelope<{
-        access: string
-        refresh?: string
-        user?: { id: string }
-      }>(response)
-      if (!result.ok) {
-        clearAuthTokens()
+      let attempt = await attemptRefresh()
+
+      // Network blip — keep the local session; caller can retry later.
+      if (attempt.networkError) {
         return false
       }
+
+      // Rotation race (multi-tab): wait briefly and retry once.
+      if (!attempt.result?.ok) {
+        await new Promise(resolve => setTimeout(resolve, 400))
+        attempt = await attemptRefresh()
+        if (attempt.networkError) {
+          return false
+        }
+      }
+
+      if (!attempt.result?.ok) {
+        await markSessionExpired()
+        return false
+      }
+
       if (isLogoutGuardActive()) {
         clearAuthTokens()
         return false
       }
+
       setAuthTokens({
-        access: result.data.access,
-        refresh: result.data.refresh,
-        userId: result.data.user?.id,
+        access: attempt.result.data.access,
+        refresh: attempt.result.data.refresh,
+        userId: attempt.result.data.user?.id,
       })
       return true
-    } catch {
-      clearAuthTokens()
-      return false
     } finally {
       refreshInFlight = null
     }
@@ -223,6 +295,12 @@ export async function apiRequest<T>(
     if (refreshed) {
       return apiRequest<T>(path, { ...options, _retry: true })
     }
+    // Still signed in locally (network blip) — surface a soft error.
+    const { isLoggedIn } = await import('@/utils/auth')
+    if (isLoggedIn()) {
+      return err('Unable to refresh session. Please try again.', 'UNAUTHORIZED')
+    }
+    return err('Session expired. Sign in again.', 'UNAUTHORIZED')
   }
 
   return parseEnvelope<T>(response)

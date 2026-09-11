@@ -41,6 +41,7 @@ export default function MyPropertiesPage() {
   const [localBuildings, setLocalBuildings] = useState<Building[] | null>(null)
   const buildings = localBuildings ?? fetchedBuildings ?? []
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [editingBuilding, setEditingBuilding] = useState<Building | null>(null)
   const [limitDialogOpen, setLimitDialogOpen] = useState(false)
 
   const loadUsage = useCallback(() => fetchOwnerUsageStatus(), [])
@@ -49,8 +50,20 @@ export default function MyPropertiesPage() {
   const handleAddBuilding = (newBuilding: Building) => {
     setLocalBuildings(prev => [...(prev ?? fetchedBuildings ?? []), newBuilding])
     setIsAddDialogOpen(false)
+    setEditingBuilding(null)
     refetchBuildings()
     refetchUsage()
+  }
+
+  const handleUpdateBuilding = (updated: Building) => {
+    setLocalBuildings(prev =>
+      (prev ?? fetchedBuildings ?? []).map(b =>
+        b.id === updated.id ? updated : b,
+      ),
+    )
+    setEditingBuilding(null)
+    setIsAddDialogOpen(false)
+    refetchBuildings()
   }
 
   const tryAddBuilding = () => {
@@ -58,6 +71,7 @@ export default function MyPropertiesPage() {
       setLimitDialogOpen(true)
       return
     }
+    setEditingBuilding(null)
     setIsAddDialogOpen(true)
   }
 
@@ -141,15 +155,27 @@ export default function MyPropertiesPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {buildings.map(building => (
-              <BuildingCard key={building.id} building={building} />
+              <BuildingCard
+                key={building.id}
+                building={building}
+                onEdit={b => {
+                  setEditingBuilding(b)
+                  setIsAddDialogOpen(true)
+                }}
+              />
             ))}
           </div>
         )}
 
         <AddBuildingDialog
           open={isAddDialogOpen}
-          onOpenChange={setIsAddDialogOpen}
+          onOpenChange={open => {
+            setIsAddDialogOpen(open)
+            if (!open) setEditingBuilding(null)
+          }}
+          building={editingBuilding}
           onAdd={handleAddBuilding}
+          onUpdate={handleUpdateBuilding}
         />
 
         <Dialog open={limitDialogOpen} onOpenChange={setLimitDialogOpen}>

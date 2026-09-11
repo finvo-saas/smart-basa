@@ -1,17 +1,30 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, CheckCircle2, XCircle, FileText } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileText,
+  PauseCircle,
+  Pencil,
+  PlayCircle,
+  Trash2,
+} from 'lucide-react'
 import type { MessRule } from '@/types/messRules'
 import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
 
 interface RuleCardProps {
   rule: MessRule
   isAccepted?: boolean
   onAccept?: (rule: MessRule) => void
   onView?: (rule: MessRule) => void
+  onEdit?: (rule: MessRule) => void
+  onDelete?: (rule: MessRule) => void
+  onToggleStatus?: (rule: MessRule) => void
   showActions?: boolean
 }
 
@@ -41,20 +54,48 @@ export function RuleCard({
   isAccepted,
   onAccept,
   onView,
+  onEdit,
+  onDelete,
+  onToggleStatus,
   showActions = true,
 }: RuleCardProps) {
+  const t = useTranslations('mess.rules')
+  const isActive = rule.status === 'active'
+  const hasOwnerActions = Boolean(onEdit || onDelete || onToggleStatus)
+  const hasRenterActions = Boolean(
+    onView || (onAccept && !isAccepted && rule.requiresAcceptance && isActive),
+  )
+  const showFooter = showActions && (hasOwnerActions || hasRenterActions)
+
   return (
     <Card
-      className={`transition-all hover:shadow-md ${!isAccepted && rule.requiresAcceptance ? 'border-yellow-500' : ''}`}
+      className={cn(
+        'transition-all hover:shadow-md',
+        !isAccepted && rule.requiresAcceptance && isActive
+          ? 'border-yellow-500'
+          : '',
+        !isActive && 'opacity-80',
+      )}
     >
       <CardHeader>
         <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-base md:text-lg flex items-start gap-2 break-words">
+          <div className="min-w-0 flex-1">
+            <CardTitle className="flex items-start gap-2 break-words text-base md:text-lg">
               <FileText className="h-5 w-5 shrink-0 text-primary" />
               {rule.title}
             </CardTitle>
-            <div className="flex flex-wrap items-center gap-2 mt-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-xs',
+                  isActive
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-slate-200 bg-slate-50 text-slate-600',
+                )}
+              >
+                {isActive ? t('ruleStatus.active') : t('ruleStatus.inactive')}
+              </Badge>
               <Badge variant="outline" className="text-xs">
                 {categoryLabels[rule.category]}
               </Badge>
@@ -67,18 +108,18 @@ export function RuleCard({
               {isAccepted && (
                 <Badge
                   variant="outline"
-                  className="bg-green-50 text-green-700 border-green-200 text-xs"
+                  className="border-green-200 bg-green-50 text-xs text-green-700"
                 >
-                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  <CheckCircle2 className="mr-1 h-3 w-3" />
                   Accepted
                 </Badge>
               )}
-              {!isAccepted && rule.requiresAcceptance && (
+              {!isAccepted && rule.requiresAcceptance && isActive && (
                 <Badge
                   variant="outline"
-                  className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs"
+                  className="border-yellow-200 bg-yellow-50 text-xs text-yellow-700"
                 >
-                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  <AlertTriangle className="mr-1 h-3 w-3" />
                   Pending Acceptance
                 </Badge>
               )}
@@ -87,10 +128,8 @@ export function RuleCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Description */}
         <p className="text-sm text-muted-foreground">{rule.description}</p>
 
-        {/* Penalty */}
         {rule.penalty && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
             <div className="flex items-start gap-2">
@@ -102,7 +141,6 @@ export function RuleCard({
           </div>
         )}
 
-        {/* Effective Date */}
         {rule.effectiveDate && (
           <div className="text-xs text-muted-foreground">
             Effective from:{' '}
@@ -110,17 +148,16 @@ export function RuleCard({
           </div>
         )}
 
-        {/* Actions */}
-        {showActions && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t">
-            {!isAccepted && rule.requiresAcceptance && onAccept && (
+        {showFooter && (
+          <div className="flex flex-wrap gap-2 border-t pt-2">
+            {!isAccepted && rule.requiresAcceptance && onAccept && isActive && (
               <Button
                 variant="default"
                 size="sm"
                 className="min-w-[8rem] flex-1"
                 onClick={() => onAccept(rule)}
               >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
+                <CheckCircle2 className="mr-2 h-4 w-4" />
                 Accept Rule
               </Button>
             )}
@@ -132,6 +169,48 @@ export function RuleCard({
                 onClick={() => onView(rule)}
               >
                 View Details
+              </Button>
+            )}
+            {onToggleStatus && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[8rem] flex-1"
+                onClick={() => onToggleStatus(rule)}
+              >
+                {isActive ? (
+                  <>
+                    <PauseCircle className="mr-2 h-4 w-4" />
+                    {t('deactivate')}
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle className="mr-2 h-4 w-4" />
+                    {t('activate')}
+                  </>
+                )}
+              </Button>
+            )}
+            {onEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[8rem] flex-1"
+                onClick={() => onEdit(rule)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[8rem] flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => onDelete(rule)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
               </Button>
             )}
           </div>

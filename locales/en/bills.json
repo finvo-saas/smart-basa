@@ -55,9 +55,13 @@
     "inactive": "Inactive",
     "items": "{count, plural, one {# item} other {# items}}",
     "noDescription": "No description",
-    "propertyLabel": "Property:",
-    "typeLabel": "Type:",
-    "itemsLabel": "Items:"
+    "propertyLabel": "Property",
+    "typeLabel": "Type",
+    "itemsLabel": "Items",
+    "created": "Template created",
+    "updated": "Template updated",
+    "deleted": "Template deleted",
+    "saveFailed": "Could not save templates"
   },
   "meterReadings": {
     "title": "Meter Readings",
@@ -69,7 +73,10 @@
     "electricity": "Electricity:",
     "gas": "Gas:",
     "water": "Water:",
-    "units": "{count} units"
+    "units": "{count} units",
+    "created": "Meter reading saved",
+    "updated": "Meter reading updated",
+    "saveFailed": "Could not save meter readings"
   },
   "automation": {
     "title": "Bill Automation",
@@ -81,10 +88,17 @@
     "schedule": "Schedule",
     "templateLabel": "Template:",
     "scheduleLabel": "Schedule:",
-    "dayOfMonth": "Day {day}"
+    "dayOfMonth": "Day {day}",
+    "created": "Automation rule created",
+    "updated": "Automation rule updated",
+    "deleted": "Automation rule deleted",
+    "activated": "Rule activated",
+    "deactivated": "Rule deactivated",
+    "saveFailed": "Could not save automation rules"
   },
   "misc": {
     "unknownProperty": "Unknown Property",
+    "unknownMess": "Unknown Mess",
     "unknownTenant": "Unknown Tenant",
     "notAvailable": "N/A",
     "flatPrefix": "Flat {number}"
@@ -108,5 +122,24 @@
     "property": "Property",
     "flat": "Flat {number}",
     "amount": "Amount"
+  },
+  "whatsappShare": {
+    "send": "Send on WhatsApp",
+    "preparing": "Preparing…",
+    "opened": "WhatsApp opened — send the message to share the bill PDF",
+    "failed": "Could not prepare WhatsApp share",
+    "noNumber": "No WhatsApp number found for this tenant",
+    "lastShared": "Last shared {date}"
+  },
+  "dueRemind": {
+    "whatsapp": "Remind due (WhatsApp)",
+    "sms": "Remind due (SMS)",
+    "preparing": "Preparing…",
+    "sendingSms": "Sending SMS…",
+    "openedWhatsapp": "WhatsApp opened — send the due reminder",
+    "smsSent": "Due reminder SMS sent",
+    "smsQueued": "Due reminder SMS queued",
+    "failed": "Could not send due reminder",
+    "noNumber": "No WhatsApp number found for this tenant"
   }
 }

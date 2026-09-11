@@ -56,10 +56,18 @@
 
   html {
     @apply max-w-full overflow-x-clip;
+    /* Keep layout width stable when Radix menus/dialogs toggle the scrollbar. */
+    scrollbar-gutter: stable;
   }
 
   body {
     @apply max-w-full overflow-x-clip bg-background text-foreground transition-colors duration-200;
+  }
+
+  /* With scrollbar-gutter:stable, Radix padding-right double-counts and shifts UI left. */
+  body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
   }
 
   :focus-visible {

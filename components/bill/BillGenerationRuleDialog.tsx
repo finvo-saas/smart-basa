@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -34,14 +34,28 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import type { BillGenerationRule } from '@/types/bill'
 import { fetchBillsBoard } from '@/lib/api/bills'
+import { fetchOwnerPortfolioSnapshot } from '@/lib/api/buildings'
 import { ok } from '@/lib/api/http'
 import { useMockQuery } from '@/hooks/useMockQuery'
 
+const optionalId = z.preprocess(
+  value => (value === null || value === '' ? undefined : value),
+  z.string().optional(),
+)
+
+const optionalPropertyType = z.preprocess(
+  value => (value === null || value === '' || value === 'all' ? undefined : value),
+  z.enum(['apartment', 'mess']).optional(),
+)
+
 const billRuleSchema = z.object({
   name: z.string().min(1, 'Rule name is required'),
-  description: z.string().optional(),
-  propertyId: z.string().optional(),
-  propertyType: z.enum(['apartment', 'mess']).optional(),
+  description: z.preprocess(
+    value => (value === null ? undefined : value),
+    z.string().optional(),
+  ),
+  propertyId: optionalId,
+  propertyType: optionalPropertyType,
   templateId: z.string().min(1, 'Template is required'),
   schedule: z.object({
     type: z.enum(['monthly', 'weekly', 'custom']),
@@ -54,12 +68,14 @@ const billRuleSchema = z.object({
   isActive: z.boolean(),
 })
 
-type BillRuleFormData = z.infer<typeof billRuleSchema>
+export type BillRuleFormData = z.infer<typeof billRuleSchema>
 
 interface BillGenerationRuleDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: BillRuleFormData) => void
+  onSubmit: (
+    data: BillRuleFormData & { id?: string },
+  ) => void | Promise<void>
   rule?: BillGenerationRule
 }
 
@@ -73,6 +89,40 @@ const daysOfWeek = [
   { value: 6, label: 'Saturday' },
 ]
 
+const emptyDefaults: BillRuleFormData = {
+  name: '',
+  description: '',
+  propertyId: undefined,
+  propertyType: undefined,
+  templateId: '',
+  schedule: {
+    type: 'monthly',
+    dayOfMonth: 1,
+    generateBeforeDays: 0,
+    dueDateDay: 5,
+  },
+  isActive: true,
+}
+
+function defaultsFromRule(rule: BillGenerationRule): BillRuleFormData {
+  return {
+    name: rule.name,
+    description: rule.description || undefined,
+    propertyId: rule.propertyId ? String(rule.propertyId) : undefined,
+    propertyType: rule.propertyType || undefined,
+    templateId: String(rule.templateId),
+    schedule: {
+      type: rule.schedule?.type || 'monthly',
+      dayOfMonth: rule.schedule?.dayOfMonth ?? 1,
+      dayOfWeek: rule.schedule?.dayOfWeek,
+      customDays: rule.schedule?.customDays,
+      generateBeforeDays: rule.schedule?.generateBeforeDays ?? 0,
+      dueDateDay: rule.schedule?.dueDateDay ?? 5,
+    },
+    isActive: rule.isActive,
+  }
+}
+
 export function BillGenerationRuleDialog({
   open,
   onOpenChange,
@@ -82,7 +132,9 @@ export function BillGenerationRuleDialog({
   const [selectedPropertyType, setSelectedPropertyType] = useState<
     'apartment' | 'mess' | 'all'
   >(rule?.propertyType || 'all')
-  const loadBillsBoard = useCallback(
+  const [submitting, setSubmitting] = useState(false)
+
+  const loadBoard = useCallback(
     () =>
       open
         ? fetchBillsBoard()
@@ -96,70 +148,96 @@ export function BillGenerationRuleDialog({
               flats: [],
               renters: [],
               messList: [],
-            })
+            }),
           ),
-    [open]
+    [open],
   )
-  const { data: billsBoard } = useMockQuery(loadBillsBoard)
+  const { data: billsBoard, loading: boardLoading } = useMockQuery(loadBoard)
+
+  const loadPortfolio = useCallback(
+    () =>
+      open
+        ? fetchOwnerPortfolioSnapshot()
+        : Promise.resolve(ok({ buildings: [], flats: [], messList: [] })),
+    [open],
+  )
+  const { data: portfolio, loading: portfolioLoading } =
+    useMockQuery(loadPortfolio)
 
   const form = useForm<BillRuleFormData>({
     resolver: zodResolver(billRuleSchema) as never,
-    defaultValues: rule
-      ? {
-          name: rule.name,
-          description: rule.description,
-          propertyId: rule.propertyId,
-          propertyType: rule.propertyType,
-          templateId: rule.templateId,
-          schedule: rule.schedule,
-          isActive: rule.isActive,
-        }
-      : {
-          name: '',
-          description: '',
-          propertyId: undefined,
-          propertyType: undefined,
-          templateId: '',
-          schedule: {
-            type: 'monthly',
-            dayOfMonth: 1,
-            generateBeforeDays: 0,
-            dueDateDay: 5,
-          },
-          isActive: true,
-        },
+    defaultValues: emptyDefaults,
   })
+
+  useEffect(() => {
+    if (!open) return
+    const next = rule ? defaultsFromRule(rule) : { ...emptyDefaults }
+    setSelectedPropertyType(next.propertyType || 'all')
+    form.reset(next)
+  }, [open, rule, form])
+
+  // Mess-only owners: default property type to Mess so templates filter usefully.
+  useEffect(() => {
+    if (!open || rule || portfolioLoading) return
+    const hasMess = (portfolio?.messList?.length ?? 0) > 0
+    const hasBuildings = (portfolio?.buildings?.length ?? 0) > 0
+    if (
+      hasMess &&
+      !hasBuildings &&
+      form.getValues('propertyType') === undefined
+    ) {
+      setSelectedPropertyType('mess')
+      form.setValue('propertyType', 'mess')
+    }
+  }, [open, rule, portfolio, portfolioLoading, form])
 
   const scheduleType = form.watch('schedule.type')
   const propertyType = form.watch('propertyType')
 
-  const handleSubmit = (data: BillRuleFormData) => {
-    onSubmit(data)
-    if (!rule) {
-      form.reset()
+  const handleSubmit = async (data: BillRuleFormData) => {
+    setSubmitting(true)
+    try {
+      await onSubmit({
+        ...data,
+        description: data.description || undefined,
+        propertyId: data.propertyId || undefined,
+        propertyType: data.propertyType || undefined,
+        ...(rule?.id ? { id: rule.id } : {}),
+      })
+    } finally {
+      setSubmitting(false)
     }
   }
 
+  const buildings = portfolio?.buildings?.length
+    ? portfolio.buildings
+    : (billsBoard?.buildings ?? [])
+  const messList = portfolio?.messList?.length
+    ? portfolio.messList
+    : (billsBoard?.messList ?? [])
   const properties =
     selectedPropertyType === 'all'
       ? []
       : selectedPropertyType === 'apartment'
-        ? (billsBoard?.buildings ?? [])
-        : (billsBoard?.messList ?? [])
+        ? buildings
+        : messList
 
   const availableTemplates = (billsBoard?.templates ?? []).filter(t => {
+    if (!t.isActive) return false
     if (propertyType && t.propertyType !== propertyType) return false
-    return t.isActive
+    return true
   })
+
+  const loading = boardLoading || portfolioLoading
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="flex max-h-[calc(100dvh-1rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-h-[calc(100dvh-4rem)]">
+        <DialogHeader className="shrink-0 space-y-1 border-b px-4 py-4 text-left sm:px-6">
+          <DialogTitle className="pr-8 text-lg sm:text-xl">
             {rule ? 'Edit Generation Rule' : 'Create Generation Rule'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-pretty text-sm">
             {rule
               ? 'Update the automated bill generation rule'
               : 'Set up rules for automatic bill generation'}
@@ -169,19 +247,78 @@ export function BillGenerationRuleDialog({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-4"
+            className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rule Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., Monthly Auto Bill Generation"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="templateId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bill Template</FormLabel>
+                      <Select
+                        value={field.value || undefined}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select template" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableTemplates.map(template => (
+                            <SelectItem
+                              key={template.id}
+                              value={template.id}
+                            >
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {availableTemplates.length === 0 && (
+                        <FormDescription>
+                          {loading
+                            ? 'Loading templates…'
+                            : 'Create an active bill template first'}
+                        </FormDescription>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
-                name="name"
+                name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Rule Name</FormLabel>
+                    <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="e.g., Monthly Auto Bill Generation"
-                        {...field}
+                      <Textarea
+                        placeholder="Describe what this rule does..."
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        rows={2}
                       />
                     </FormControl>
                     <FormMessage />
@@ -189,105 +326,27 @@ export function BillGenerationRuleDialog({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="templateId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bill Template</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select template" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {availableTemplates.map(template => (
-                          <SelectItem key={template.id} value={template.id}>
-                            {template.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Describe what this rule does..."
-                      {...field}
-                      rows={2}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="propertyType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Property Type (Optional)</FormLabel>
-                    <Select
-                      onValueChange={value => {
-                        const val =
-                          value === 'all'
-                            ? undefined
-                            : (value as 'apartment' | 'mess')
-                        field.onChange(val)
-                        setSelectedPropertyType(
-                          value as 'apartment' | 'mess' | 'all'
-                        )
-                        form.setValue('propertyId', undefined)
-                      }}
-                      defaultValue={field.value || 'all'}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="apartment">Apartment</SelectItem>
-                        <SelectItem value="mess">Mess</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Leave as "All Types" to apply to all properties
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {selectedPropertyType !== 'all' && properties.length > 0 && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="propertyId"
+                  name="propertyType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Property (Optional)</FormLabel>
+                      <FormLabel>Property Type (Optional)</FormLabel>
                       <Select
-                        onValueChange={value =>
-                          field.onChange(value === 'all' ? undefined : value)
-                        }
-                        defaultValue={field.value || 'all'}
+                        value={field.value || 'all'}
+                        onValueChange={value => {
+                          const val =
+                            value === 'all'
+                              ? undefined
+                              : (value as 'apartment' | 'mess')
+                          field.onChange(val)
+                          setSelectedPropertyType(
+                            value as 'apartment' | 'mess' | 'all',
+                          )
+                          form.setValue('propertyId', undefined)
+                          form.setValue('templateId', '')
+                        }}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -295,197 +354,245 @@ export function BillGenerationRuleDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="all">All Properties</SelectItem>
-                          {properties.map(prop => (
-                            <SelectItem key={prop.id} value={prop.id}>
-                              {prop.name}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="all">All Types</SelectItem>
+                          <SelectItem value="apartment">Apartment</SelectItem>
+                          <SelectItem value="mess">Mess</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        Leave as "All Properties" to apply to all properties of
-                        this type
+                        Leave as &quot;All Types&quot; to apply to all properties
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              )}
-            </div>
 
-            {/* Schedule Configuration */}
-            <div className="space-y-4 rounded-lg border p-4">
-              <Label className="text-base font-semibold">
-                Schedule Configuration
-              </Label>
-
-              <FormField
-                control={form.control}
-                name="schedule.type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Schedule Type</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="custom">Custom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
+                {selectedPropertyType !== 'all' && (
+                  <FormField
+                    control={form.control}
+                    name="propertyId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Property (Optional)</FormLabel>
+                        <Select
+                          value={field.value || 'all'}
+                          onValueChange={value =>
+                            field.onChange(value === 'all' ? undefined : value)
+                          }
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="all">All Properties</SelectItem>
+                            {properties.map(prop => (
+                              <SelectItem key={prop.id} value={prop.id}>
+                                {prop.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Leave as &quot;All Properties&quot; to apply to all of
+                          this type
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 )}
-              />
+              </div>
 
-              {scheduleType === 'monthly' && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="schedule.dayOfMonth"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Day of Month</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={31}
-                            placeholder="1-31"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Day of month to generate bills
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <div className="space-y-4 rounded-lg border p-3 sm:p-4">
+                <Label className="text-base font-semibold">
+                  Schedule Configuration
+                </Label>
 
-                  <FormField
-                    control={form.control}
-                    name="schedule.generateBeforeDays"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Generate Before (Days)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={0}
-                            placeholder="0"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Generate bills X days before the scheduled date
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )}
-
-              {scheduleType === 'weekly' && (
                 <FormField
                   control={form.control}
-                  name="schedule.dayOfWeek"
+                  name="schedule.type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Day of Week</FormLabel>
+                      <FormLabel>Schedule Type</FormLabel>
                       <Select
-                        onValueChange={value => field.onChange(parseInt(value))}
-                        defaultValue={field.value?.toString()}
+                        value={field.value}
+                        onValueChange={field.onChange}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select day" />
+                            <SelectValue />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {daysOfWeek.map(day => (
-                            <SelectItem
-                              key={day.value}
-                              value={day.value.toString()}
-                            >
-                              {day.label}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="custom">Custom</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              )}
+
+                {scheduleType === 'monthly' && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="schedule.dayOfMonth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Day of Month</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              min={1}
+                              max={31}
+                              placeholder="1-31"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Day of month to generate bills
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="schedule.generateBeforeDays"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Generate Before (Days)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              min={0}
+                              placeholder="0"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Generate bills X days before the scheduled date
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {scheduleType === 'weekly' && (
+                  <FormField
+                    control={form.control}
+                    name="schedule.dayOfWeek"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Day of Week</FormLabel>
+                        <Select
+                          value={
+                            field.value === undefined || field.value === null
+                              ? undefined
+                              : String(field.value)
+                          }
+                          onValueChange={value =>
+                            field.onChange(parseInt(value, 10))
+                          }
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select day" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {daysOfWeek.map(day => (
+                              <SelectItem
+                                key={day.value}
+                                value={day.value.toString()}
+                              >
+                                {day.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="schedule.dueDateDay"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Due Date Day</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={31}
+                          placeholder="5"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Day of month when bills are due (default: 5)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}
-                name="schedule.dueDateDay"
+                name="isActive"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Due Date Day</FormLabel>
+                  <FormItem className="flex flex-row items-center justify-between gap-3 rounded-lg border p-3 sm:p-4">
+                    <div className="min-w-0 space-y-0.5">
+                      <FormLabel className="text-base">Active</FormLabel>
+                      <FormDescription>
+                        Only active rules will run automatically
+                      </FormDescription>
+                    </div>
                     <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={31}
-                        placeholder="5"
-                        {...field}
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormDescription>
-                      Day of month when bills are due (default: 5)
-                    </FormDescription>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="isActive"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Active</FormLabel>
-                    <FormDescription>
-                      Only active rules will run automatically
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end pt-4 border-t">
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  form.reset()
-                  onOpenChange(false)
-                }}
+                className="w-full sm:w-auto"
+                disabled={submitting}
+                onClick={() => onOpenChange(false)}
               >
                 Cancel
               </Button>
-              <Button type="submit">
-                {rule ? 'Update Rule' : 'Create Rule'}
+              <Button
+                type="submit"
+                className="w-full sm:w-auto"
+                disabled={submitting || loading}
+              >
+                {submitting
+                  ? 'Saving…'
+                  : rule
+                    ? 'Update Rule'
+                    : 'Create Rule'}
               </Button>
             </div>
           </form>

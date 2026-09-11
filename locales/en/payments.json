@@ -92,9 +92,11 @@
     "payingWith": "Paying with",
     "walletLabel": "Wallet / account number",
     "walletHint": "Demo mode — no real money is charged until gateway is connected.",
-    "cashPending": "Cash is recorded as pending until your property owner confirms receipt.",
+    "cashPending": "Cash is recorded as pending until your property owner confirms receipt. They will see your claim under Payments → Claims.",
     "invalidWallet": "Enter a valid 11-digit wallet / account number",
+    "alreadyPaid": "This bill is already paid.",
     "payAmount": "Pay {amount}",
+    "submitCashClaim": "Notify owner — cash {amount}",
     "openStatusPage": "Open payment status page",
     "viewReceipt": "View receipt"
   },

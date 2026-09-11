@@ -75,6 +75,7 @@ export function PayBillDialog({
   const selected = getPaymentMethodOption(method)
   const billName = `${bill.month} ${bill.year} — ${bill.propertyName}`
   const tenantId = userId || getDemoTenantId()
+  const amountDue = Math.max(0, bill.amount - (bill.amountPaid ?? 0))
 
   const submitPayment = async () => {
     setError(null)
@@ -85,6 +86,10 @@ export function PayBillDialog({
         return
       }
     }
+    if (amountDue <= 0) {
+      setError(t('alreadyPaid'))
+      return
+    }
 
     setStep('processing')
     const result = await payBill({
@@ -92,7 +97,7 @@ export function PayBillDialog({
       billName,
       propertyName: bill.propertyName,
       tenantName: bill.tenantName,
-      amount: bill.amount,
+      amount: amountDue,
       paymentMethod: method,
       accountNumber: selected?.needsAccount ? accountNumber.trim() : undefined,
       userId: tenantId,
@@ -113,9 +118,13 @@ export function PayBillDialog({
           ...bill,
           status: 'paid',
           paidDate: new Date().toISOString().split('T')[0],
+          amountPaid: bill.amount,
         },
         result.data
       )
+    } else if (result.data.status === 'pending') {
+      // Cash claim submitted — bill stays unpaid until owner confirms.
+      onSuccess?.(bill, result.data)
     }
   }
 
@@ -147,7 +156,7 @@ export function PayBillDialog({
             <div>
               <p className="text-sm text-muted-foreground">{t('amountDue')}</p>
               <p className="text-2xl font-bold text-primary">
-                {formatCurrency(bill.amount)}
+                {formatCurrency(amountDue)}
               </p>
             </div>
             <Badge
@@ -210,7 +219,9 @@ export function PayBillDialog({
             )}
 
             <Button className="w-full" onClick={submitPayment}>
-              {t('payAmount', { amount: formatCurrency(bill.amount) })}
+              {method === 'Cash'
+                ? t('submitCashClaim', { amount: formatCurrency(amountDue) })
+                : t('payAmount', { amount: formatCurrency(amountDue) })}
             </Button>
           </div>
         )}

@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import type { MessUtilities } from '@/types/mess'
+import type { MessUtilities, MessUtilityProfile } from '@/types/mess'
 import { Droplets, Zap } from 'lucide-react'
 
 function ScoreRing({ score, tone }: { score: number; tone: 'water' | 'power' }) {
@@ -23,10 +23,25 @@ function ScoreRing({ score, tone }: { score: number; tone: 'water' | 'power' }) 
   )
 }
 
+function manualEntries(profile: MessUtilityProfile): [string, string][] {
+  const raw = profile.manual
+  if (!raw || typeof raw !== 'object') return []
+  return Object.entries(raw)
+    .filter(([key]) => key.trim())
+    .map(([key, value]) => [key, value == null ? '' : String(value)])
+}
+
 export function MessUtilitiesBoard({ utilities }: { utilities: MessUtilities }) {
   const t = useTranslations('mess.publicDetail')
   const water = utilities.water
   const power = utilities.electricity
+  const waterManual = manualEntries(water.profile)
+  const extras = [
+    ...waterManual,
+    ...manualEntries(power.profile).filter(
+      ([key]) => !waterManual.some(([k]) => k === key),
+    ),
+  ]
 
   return (
     <Card className="border-sky-900/10 bg-gradient-to-br from-sky-50/70 via-white to-amber-50/40">
@@ -34,7 +49,7 @@ export function MessUtilitiesBoard({ utilities }: { utilities: MessUtilities }) 
         <CardTitle className="text-lg">{t('utilitiesTitle')}</CardTitle>
         <p className="text-sm text-muted-foreground">{t('utilitiesSubtitle')}</p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-sky-100 bg-white/80 p-4">
             <div className="mb-2 flex items-center justify-between">
@@ -87,6 +102,20 @@ export function MessUtilitiesBoard({ utilities }: { utilities: MessUtilities }) 
             </ul>
           </div>
         </div>
+
+        {extras.length > 0 ? (
+          <div className="rounded-xl border bg-white/70 p-4">
+            <p className="mb-2 text-sm font-medium">{t('manualDetails')}</p>
+            <dl className="grid gap-2 sm:grid-cols-2">
+              {extras.map(([key, value]) => (
+                <div key={key} className="text-sm">
+                  <dt className="text-muted-foreground">{key}</dt>
+                  <dd className="font-medium">{value || '—'}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   )

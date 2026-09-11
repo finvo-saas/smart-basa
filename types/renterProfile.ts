@@ -3,6 +3,8 @@ export interface Document {
   type: 'nid' | 'passport' | 'driving_license' | 'police_verification' | 'other'
   documentNumber: string
   fileUrl: string
+  /** Private storage key — used to mint fresh signed URLs on read. */
+  fileKey?: string
   fileName: string
   fileSize: number
   uploadedAt: string

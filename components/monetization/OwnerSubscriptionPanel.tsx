@@ -130,7 +130,7 @@ export function OwnerSubscriptionPanel() {
             </li>
             <li>
               Limits apply per module; your dashboard only shows businesses you
-              enabled under business focus
+              enabled under business type
             </li>
             <li>
               Basic and Premium apply immediately (sandbox billing until live

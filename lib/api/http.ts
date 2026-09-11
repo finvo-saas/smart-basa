@@ -21,6 +21,7 @@ export type ApiErrorCode =
   | 'CIMS_REQUIRED'
   | 'INVALID'
   | 'INVALID_ACCOUNT'
+  | 'UNAUTHORIZED'
   | 'GATEWAY_TODO'
   | 'UNAVAILABLE'
   | 'UNPUBLISHED'

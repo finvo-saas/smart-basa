@@ -5,7 +5,10 @@ import { useTranslations } from 'next-intl'
 import { Layout } from '@/components/layout/Layout'
 import { EmptyState } from '@/components/page'
 import { ComplaintCard } from '@/components/complaint/ComplaintCard'
-import { ComplaintForm } from '@/components/complaint/ComplaintForm'
+import {
+  ComplaintForm,
+  type ComplaintFormSubmit,
+} from '@/components/complaint/ComplaintForm'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -27,16 +30,17 @@ export default function ComplaintsPage() {
   const tc = useTranslations('common')
   const [complaints, setComplaints] = useState<Complaint[]>([])
   const [statusFilter, setStatusFilter] = useState<ComplaintStatus | 'all'>(
-    'all'
+    'all',
   )
   const [showForm, setShowForm] = useState(false)
 
   const userRole = getStoredRole() || 'renter'
   const isOwner = userRole === 'owner'
+  const currentUserId = getCurrentAccountUserId()
 
   const loadComplaints = useCallback(async () => {
     const result = await fetchComplaints(
-      isOwner ? { ownerView: true } : undefined
+      isOwner ? { ownerView: true } : undefined,
     )
     if (result.ok) setComplaints(result.data)
   }, [isOwner])
@@ -62,11 +66,7 @@ export default function ComplaintsPage() {
     })
   }, [complaints, statusFilter, isOwner])
 
-  const handleSubmit = async (data: {
-    title: string
-    description: string
-    image?: File
-  }) => {
+  const handleSubmit = async (data: ComplaintFormSubmit) => {
     const userId = getCurrentAccountUserId()
     let imageUrl: string | undefined
     if (data.image) {
@@ -83,12 +83,27 @@ export default function ComplaintsPage() {
       title: data.title,
       description: data.description,
       imageUrl,
+      category: data.category,
+      scopeType: data.scopeType,
+      scopeId: data.scopeId,
+      targetId: data.targetId,
+      buildingId: data.buildingId,
+      flatId: data.flatId,
+      messId: data.messId,
     })
     if (result.ok) {
       setComplaints(prev => [result.data, ...prev])
       setShowForm(false)
       toast.success(t('submitSuccess'))
+    } else {
+      toast.error(result.error)
     }
+  }
+
+  const handleUpdated = (updated: Complaint) => {
+    setComplaints(prev =>
+      prev.map(c => (c.id === updated.id ? { ...c, ...updated } : c)),
+    )
   }
 
   const statusCounts = {
@@ -99,7 +114,9 @@ export default function ComplaintsPage() {
   }
 
   const statusLabel = (status: ComplaintStatus | 'all') =>
-    status === 'all' ? tc('status.all') : tc(`status.${status === 'in_progress' ? 'inProgress' : status}`)
+    status === 'all'
+      ? tc('status.all')
+      : tc(`status.${status === 'in_progress' ? 'inProgress' : status}`)
 
   return (
     <Layout>
@@ -180,7 +197,13 @@ export default function ComplaintsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {filteredComplaints.map(complaint => (
-              <ComplaintCard key={complaint.id} complaint={complaint} />
+              <ComplaintCard
+                key={complaint.id}
+                complaint={complaint}
+                isOwner={isOwner}
+                canEditContent={complaint.userId === currentUserId}
+                onUpdated={handleUpdated}
+              />
             ))}
           </div>
         )}

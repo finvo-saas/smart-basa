@@ -6,7 +6,11 @@ import { OnboardingWizard } from './OnboardingWizard'
 import { Button } from '@/components/ui/button'
 import { useOnboarding } from '@/hooks/useOnboarding'
 
-export function MessOnboardingDialog() {
+export function MessOnboardingDialog({
+  onAddMess,
+}: {
+  onAddMess?: () => void
+}) {
   const { shouldShow, complete } = useOnboarding('mess')
 
   return (
@@ -23,11 +27,18 @@ export function MessOnboardingDialog() {
         {
           title: 'Create your mess profile',
           description:
-            'Set up mess name, location, seat capacity, and monthly fee. Students will see this when browsing available mess options.',
+            'Set up mess name, location, seat capacity, and monthly fee. Optionally publish so seekers can find open seats.',
           icon: <UtensilsCrossed className="h-6 w-6" />,
           content: (
-            <Button asChild size="sm" variant="secondary">
-              <Link href="/mess">Open Mess dashboard</Link>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                complete()
+                onAddMess?.()
+              }}
+            >
+              Add mess / hostel
             </Button>
           ),
         },
@@ -38,7 +49,7 @@ export function MessOnboardingDialog() {
           icon: <Users className="h-6 w-6" />,
           content: (
             <Button asChild size="sm" variant="secondary">
-              <Link href="/mess">Manage students</Link>
+              <Link href="/mess">Manage renters</Link>
             </Button>
           ),
         },
@@ -49,7 +60,7 @@ export function MessOnboardingDialog() {
           icon: <ClipboardCheck className="h-6 w-6" />,
           content: (
             <Button asChild size="sm" variant="secondary">
-              <Link href="/mess">Set up meals</Link>
+              <Link href="/mess">Open mess dashboard</Link>
             </Button>
           ),
         },

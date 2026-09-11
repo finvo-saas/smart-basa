@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -75,6 +75,21 @@ export function FamilyMemberDialog({
       isEmergencyContact: initialData?.isEmergencyContact || false,
     },
   })
+
+  useEffect(() => {
+    if (!open) return
+    form.reset({
+      name: initialData?.name || '',
+      relation: initialData?.relation || 'child',
+      age: initialData?.age || 0,
+      gender: initialData?.gender || 'male',
+      phone: initialData?.phone || '',
+      nid: initialData?.nid || '',
+      isEmergencyContact: initialData?.isEmergencyContact || false,
+    })
+    setSelectedFile(null)
+    setPreviewUrl(initialData?.photoUrl || null)
+  }, [open, initialData, form])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

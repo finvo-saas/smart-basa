@@ -20,6 +20,8 @@ export interface Bill {
   createdAt: string
   templateId?: string // Reference to bill template if auto-generated
   meterReadings?: MeterReading // Meter readings used for calculation
+  /** ISO timestamp when owner last opened WhatsApp share for this bill */
+  whatsappSharedAt?: string | null
 }
 
 export interface BillItem {

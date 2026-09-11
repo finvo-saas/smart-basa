@@ -34,7 +34,9 @@ import {
   getProfilePhotoUrl,
   getStoredRole,
   isLoggedIn,
+  isOtpVerified,
 } from '@/utils/auth'
+import { AUTH_SESSION_CHANGED } from '@/lib/auth/session-events'
 import type { UserRole } from '@/types'
 import { getCurrentAccountUserId } from '@/lib/api/account'
 import { cn } from '@/lib/utils'
@@ -89,15 +91,19 @@ export function AppHeader() {
       if (logged) {
         setUserName(getDisplayName())
         setPhotoUrl(getProfilePhotoUrl())
-        setIsVerified(sessionStorage.getItem('otpVerified') === 'true')
+        setIsVerified(isOtpVerified())
       }
     }
 
     setMounted(true)
     syncUser()
 
+    window.addEventListener(AUTH_SESSION_CHANGED, syncUser)
     window.addEventListener('profile-updated', syncUser)
-    return () => window.removeEventListener('profile-updated', syncUser)
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED, syncUser)
+      window.removeEventListener('profile-updated', syncUser)
+    }
   }, [])
 
   useEffect(() => {

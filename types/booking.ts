@@ -14,6 +14,8 @@ export interface Booking {
   propertyType: 'mess' | 'apartment' | 'hostel' | 'hotel'
   propertyAddress: string
   propertyImage?: string
+  flatId?: string | null
+  flatNumber?: string | null
   renterId: string
   renterName: string
   renterPhone: string

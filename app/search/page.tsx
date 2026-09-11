@@ -106,6 +106,10 @@ const searchSchema = z.object({
   nearbyFacilities: z.array(z.string()).optional(),
   buildingAge: z.number().optional(),
   floorLevel: z.number().optional(),
+  bedrooms: z.number().optional(),
+  bathrooms: z.number().optional(),
+  sizeSqftMin: z.number().optional(),
+  tenantType: z.enum(['family', 'bachelor', 'office', 'any']).nullable(),
   furnishing: z.enum(['furnished', 'unfurnished', 'semi-furnished']).nullable(),
   parking: z.boolean().optional(),
   security: z.boolean().optional(),
@@ -186,6 +190,10 @@ export default function SearchPage() {
       nearbyFacilities: [],
       buildingAge: undefined,
       floorLevel: undefined,
+      bedrooms: undefined,
+      bathrooms: undefined,
+      sizeSqftMin: undefined,
+      tenantType: null,
       furnishing: null,
       parking: undefined,
       security: undefined,
@@ -344,6 +352,38 @@ export default function SearchPage() {
       )
     }
 
+    // Apartment BHK / baths / size / tenant preference
+    if (formValues.bedrooms !== undefined) {
+      filtered = filtered.filter(
+        p =>
+          p.type !== 'apartment' ||
+          (p.bedrooms != null && p.bedrooms >= formValues.bedrooms!),
+      )
+    }
+    if (formValues.bathrooms !== undefined) {
+      filtered = filtered.filter(
+        p =>
+          p.type !== 'apartment' ||
+          (p.bathrooms != null && p.bathrooms >= formValues.bathrooms!),
+      )
+    }
+    if (formValues.sizeSqftMin !== undefined) {
+      filtered = filtered.filter(
+        p =>
+          p.type !== 'apartment' ||
+          (p.sizeSqft != null && p.sizeSqft >= formValues.sizeSqftMin!),
+      )
+    }
+    if (formValues.tenantType && formValues.tenantType !== 'any') {
+      filtered = filtered.filter(
+        p =>
+          p.type !== 'apartment' ||
+          !p.tenantType ||
+          p.tenantType === 'any' ||
+          p.tenantType === formValues.tenantType,
+      )
+    }
+
     // Filter by furnishing
     if (formValues.furnishing) {
       filtered = filtered.filter(p => p.furnishing === formValues.furnishing)
@@ -483,6 +523,10 @@ export default function SearchPage() {
       formValues.nearbyFacilities?.length ||
       formValues.buildingAge ||
       formValues.floorLevel ||
+      formValues.bedrooms ||
+      formValues.bathrooms ||
+      formValues.sizeSqftMin ||
+      formValues.tenantType ||
       formValues.furnishing ||
       formValues.parking ||
       formValues.security
@@ -559,6 +603,10 @@ export default function SearchPage() {
       nearbyFacilities: [],
       buildingAge: undefined,
       floorLevel: undefined,
+      bedrooms: undefined,
+      bathrooms: undefined,
+      sizeSqftMin: undefined,
+      tenantType: null,
       furnishing: null,
       parking: undefined,
       security: undefined,
@@ -1186,6 +1234,146 @@ export default function SearchPage() {
                           className="w-full"
                         />
                       </div>
+
+                      {/* Apartment layout filters */}
+                      {(formValues.propertyType === 'apartment' ||
+                        formValues.propertyType === 'all') && (
+                        <div className="space-y-4 rounded-lg border bg-muted/20 p-3">
+                          <Label className="text-sm font-semibold">
+                            {t('page.filters.apartmentSection')}
+                          </Label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">
+                                {t('page.filters.bedrooms')}
+                              </Label>
+                              <Select
+                                value={
+                                  formValues.bedrooms != null
+                                    ? String(formValues.bedrooms)
+                                    : 'any'
+                                }
+                                onValueChange={v =>
+                                  setValue(
+                                    'bedrooms',
+                                    v === 'any' ? undefined : Number(v),
+                                  )
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="any">
+                                    {t('page.filters.buildingAgeAny')}
+                                  </SelectItem>
+                                  {[1, 2, 3, 4, 5].map(n => (
+                                    <SelectItem key={n} value={String(n)}>
+                                      {t('page.filters.bedroomsMin', {
+                                        count: n,
+                                      })}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">
+                                {t('page.filters.bathrooms')}
+                              </Label>
+                              <Select
+                                value={
+                                  formValues.bathrooms != null
+                                    ? String(formValues.bathrooms)
+                                    : 'any'
+                                }
+                                onValueChange={v =>
+                                  setValue(
+                                    'bathrooms',
+                                    v === 'any' ? undefined : Number(v),
+                                  )
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="any">
+                                    {t('page.filters.buildingAgeAny')}
+                                  </SelectItem>
+                                  {[1, 2, 3, 4].map(n => (
+                                    <SelectItem key={n} value={String(n)}>
+                                      {t('page.filters.bathroomsMin', {
+                                        count: n,
+                                      })}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">
+                              {t('page.filters.tenantType')}
+                            </Label>
+                            <Select
+                              value={formValues.tenantType || 'any'}
+                              onValueChange={v =>
+                                setValue(
+                                  'tenantType',
+                                  v === 'any'
+                                    ? null
+                                    : (v as
+                                        | 'family'
+                                        | 'bachelor'
+                                        | 'office'
+                                        | 'any'),
+                                )
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="any">
+                                  {t('page.tenantTypes.any')}
+                                </SelectItem>
+                                <SelectItem value="family">
+                                  {t('page.tenantTypes.family')}
+                                </SelectItem>
+                                <SelectItem value="bachelor">
+                                  {t('page.tenantTypes.bachelor')}
+                                </SelectItem>
+                                <SelectItem value="office">
+                                  {t('page.tenantTypes.office')}
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2.5">
+                            <Label className="text-xs text-muted-foreground">
+                              {t('page.filters.sizeSqftMin', {
+                                value:
+                                  formValues.sizeSqftMin ||
+                                  t('page.filters.buildingAgeAny'),
+                              })}
+                            </Label>
+                            <Slider
+                              value={[formValues.sizeSqftMin || 0]}
+                              onValueChange={value =>
+                                setValue(
+                                  'sizeSqftMin',
+                                  value[0] === 0 ? undefined : value[0],
+                                )
+                              }
+                              min={0}
+                              max={3000}
+                              step={50}
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       {/* Furnishing */}
                       <div className="space-y-2.5">
