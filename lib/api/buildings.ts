@@ -75,6 +75,10 @@ export async function createFlat(data: {
   area?: number
   bedrooms?: number
   bathrooms?: number
+  electricityBill?: number | null
+  gasBill?: number | null
+  internetBill?: number | null
+  waterBill?: number | null
 }): Promise<ApiResult<Flat>> {
   return apiRequest<Flat>('/flats/', {
     method: 'POST',
@@ -92,6 +96,10 @@ export async function patchFlat(
     area?: number
     bedrooms?: number
     bathrooms?: number
+    electricityBill?: number | null
+    gasBill?: number | null
+    internetBill?: number | null
+    waterBill?: number | null
   }>,
 ): Promise<ApiResult<Flat>> {
   return apiRequest<Flat>(`/flats/${flatId}/`, {

@@ -206,6 +206,10 @@
     "rejectBooking": "Reject booking",
     "approveWithFlatTitle": "Assign flat & approve",
     "approveWithFlatDesc": "Choose a vacant unit for {renter} at {property}. This creates their tenancy.",
+    "approveLinkedDesc": "Approve {renter} for {property}. The linked flat will be occupied.",
+    "approveLinkedNote": "This is the flat attached to the listing. Another unit cannot be used.",
+    "noLinkedFlat": "This listing has no vacant flat attached.",
+    "noLinkedFlatHint": "Edit the listing and choose a vacant flat from My properties, then approve again.",
     "loadingFlats": "Loading vacant flats…",
     "noVacantFlats": "No vacant flats available.",
     "noVacantFlatsHint": "Add a flat under My buildings, or vacate an occupied unit first.",
@@ -214,7 +218,13 @@
     "flatOption": "Flat {number} · Floor {floor} · {rent} {linked}",
     "linkedBadge": "(linked)",
     "confirmApprove": "Approve & assign",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "takenTitle": "Someone says this may already be taken",
+    "takenBody": "Other renters can still see {name} and request it. Confirm only if it is really full. Dismiss if seats or the flat are still open.",
+    "confirmTaken": "Confirm taken — hide listing",
+    "dismissTaken": "Still available",
+    "takenConfirmed": "Listing hidden. New requests are closed.",
+    "takenDismissed": "Kept visible. Renters can still request it."
   },
   "rentals": {
     "title": "My rentals",

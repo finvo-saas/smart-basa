@@ -11,8 +11,8 @@ import { Input } from '@/components/ui/input'
 const CATEGORIES = [
   { href: '/search?category=all', key: 'all', icon: Search },
   { href: '/search?category=apartment', key: 'apartment', icon: Building2 },
-  { href: '/messes', key: 'mess', icon: UtensilsCrossed },
-  { href: '/hotels', key: 'hotel', icon: Hotel },
+  { href: '/search?category=mess', key: 'mess', icon: UtensilsCrossed },
+  { href: '/search?category=hotel', key: 'hotel', icon: Hotel },
 ] as const
 
 export function QuickExploreBar() {

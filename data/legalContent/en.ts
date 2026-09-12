@@ -105,7 +105,7 @@ export const termsSections: LegalSection[] = [
     title: '8. Changes & contact',
     paragraphs: [
       'We may update these terms. Material changes will be noted on this page with an updated date.',
-      'Questions: info@smartbasa.com · +880 1234 567890 · Dhaka, Bangladesh.',
+      'Questions: info@smartbasa.com · +880 1991166550 · Dhaka, Bangladesh.',
     ],
   },
 ]
@@ -273,7 +273,7 @@ export const faqItems: FaqItem[] = [
     category: 'Support',
     question: 'How do I contact support?',
     answer:
-      'Email info@smartbasa.com, call +880 1234 567890, or use the Contact form. Help Center articles and this FAQ cover most common questions.',
+      'Email info@smartbasa.com, call +880 1991166550, or use the Contact form. Help Center articles and this FAQ cover most common questions.',
   },
 ]
 

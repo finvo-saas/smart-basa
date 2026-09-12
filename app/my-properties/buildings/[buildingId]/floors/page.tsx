@@ -118,34 +118,35 @@ export default function FloorsPage() {
 
   return (
     <Layout userRole="owner">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
+      <div className="container mx-auto max-w-7xl px-3 py-5 sm:px-4 sm:py-6">
         {/* Header */}
         <div className="mb-6">
           <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+            <div className="min-w-0">
               <Button
                 variant="ghost"
-                className="mb-2 -ml-2"
+                className="mb-2 -ml-2 h-auto whitespace-normal px-2"
                 onClick={() => router.push('/my-properties')}
               >
                 {t('backToBuildings')}
               </Button>
-              <h1 className="flex items-center gap-2 text-2xl font-bold">
-                <Building2 className="h-6 w-6" />
-                {t('titleSuffix', { name: building.name })}
+              <h1 className="flex min-w-0 items-start gap-2 break-words text-xl font-bold sm:text-2xl">
+                <Building2 className="mt-0.5 h-6 w-6 shrink-0" />
+                <span className="min-w-0">{t('titleSuffix', { name: building.name })}</span>
               </h1>
               <p className="mt-1 text-muted-foreground">{t('manageDesc')}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <Button
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() =>
                   router.push(`/my-properties/buildings/${buildingId}/flats`)
                 }
               >
                 {t('allFlats')}
               </Button>
-              <Button onClick={handleAddFloor}>
+              <Button className="w-full sm:w-auto" onClick={handleAddFloor}>
                 <Plus className="mr-2 h-4 w-4" />
                 {t('addFloor')}
               </Button>

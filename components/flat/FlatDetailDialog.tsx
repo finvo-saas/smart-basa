@@ -9,6 +9,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  ownerSheetClass,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -144,22 +145,22 @@ export function FlatDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl sm:text-2xl">
+      <DialogContent className={ownerSheetClass('sm:max-w-3xl')}>
+        <DialogHeader className="shrink-0 space-y-1 border-b px-4 pb-3 pr-12 pt-4 text-left sm:px-6 sm:pt-5">
+          <DialogTitle className="break-words text-lg sm:text-2xl">
             {t('flatNumber', { number: flat.flatNumber })}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="break-words">
             {t('floorNumber', { number: flat.floor })} · {occupancyRateLabel}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:space-y-6 sm:px-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <FlatStatusBadge status={flat.status} className="text-sm" />
-            <div>
+            <div className="min-w-0">
               <p className="text-sm text-muted-foreground">{t('rent')}</p>
-              <p className="text-2xl font-bold text-primary">
+              <p className="break-all text-xl font-bold text-primary sm:text-2xl">
                 {formatCurrency(flat.rent)}
               </p>
             </div>
@@ -207,48 +208,49 @@ export function FlatDetailDialog({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <User className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{flat.renter.name}</p>
+                  <div className="flex items-start gap-3">
+                    <User className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="break-words font-medium">{flat.renter.name}</p>
                       <p className="text-sm text-muted-foreground">{t('name')}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-5 w-5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="font-medium">{flat.renter.phone}</p>
+                  <div className="flex items-start gap-3">
+                    <Phone className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className="break-all font-medium">{flat.renter.phone}</p>
                       <p className="text-sm text-muted-foreground">{t('phone')}</p>
+                      <WhatsAppButton
+                        className="mt-2"
+                        size="sm"
+                        number={flat.renter.whatsapp}
+                        message={renterWhatsAppMessage}
+                      />
                     </div>
-                    <WhatsAppButton
-                      size="sm"
-                      number={flat.renter.whatsapp}
-                      message={renterWhatsAppMessage}
-                    />
                   </div>
                   {flat.renter.email ? (
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{flat.renter.email}</p>
+                    <div className="flex items-start gap-3">
+                      <Mail className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <p className="break-all font-medium">{flat.renter.email}</p>
                         <p className="text-sm text-muted-foreground">Email</p>
                       </div>
                     </div>
                   ) : null}
                   {flat.renter.nid ? (
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{flat.renter.nid}</p>
+                    <div className="flex items-start gap-3">
+                      <FileText className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <p className="break-all font-medium">{flat.renter.nid}</p>
                         <p className="text-sm text-muted-foreground">NID</p>
                       </div>
                     </div>
                   ) : null}
                   {flat.renter.address ? (
                     <div className="flex items-start gap-3">
-                      <Home className="mt-0.5 h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{flat.renter.address}</p>
+                      <Home className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <p className="break-words font-medium">{flat.renter.address}</p>
                         <p className="text-sm text-muted-foreground">Address</p>
                       </div>
                     </div>
@@ -287,14 +289,15 @@ export function FlatDetailDialog({
           )}
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-lg">{t('paymentHistory')}</CardTitle>
               <Button
                 variant="outline"
                 size="sm"
+                className="h-auto w-full whitespace-normal py-2 sm:w-auto"
                 onClick={() => onGenerateBill(flat)}
               >
-                <DollarSign className="mr-2 h-4 w-4" />
+                <DollarSign className="mr-2 h-4 w-4 shrink-0" />
                 {t('generateBill')}
               </Button>
             </CardHeader>
@@ -304,57 +307,103 @@ export function FlatDetailDialog({
                   {t('loadingBills')}
                 </div>
               ) : bills.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t('month')}</TableHead>
-                        <TableHead>{t('amount')}</TableHead>
-                        <TableHead>{t('dueDate')}</TableHead>
-                        <TableHead>{t('paidDate')}</TableHead>
-                        <TableHead>{t('status')}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {bills.map(bill => {
-                        const key =
-                          bill.status === 'paid'
-                            ? 'paid'
-                            : bill.status === 'overdue'
-                              ? 'overdue'
-                              : 'unpaid'
-                        const statusInfo = paymentStatusConfig[key]
-                        const StatusIcon = statusInfo.icon
-                        return (
-                          <TableRow key={bill.id}>
-                            <TableCell>
-                              {bill.month} {bill.year}
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {formatCurrency(bill.amount)}
-                            </TableCell>
-                            <TableCell>
-                              {new Date(bill.dueDate).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>
-                              {bill.paidDate
-                                ? new Date(bill.paidDate).toLocaleDateString()
-                                : '—'}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
+                <>
+                  <div className="space-y-2 sm:hidden">
+                    {bills.map(bill => {
+                      const key =
+                        bill.status === 'paid'
+                          ? 'paid'
+                          : bill.status === 'overdue'
+                            ? 'overdue'
+                            : 'unpaid'
+                      const statusInfo = paymentStatusConfig[key]
+                      const StatusIcon = statusInfo.icon
+                      return (
+                        <div key={bill.id} className="rounded-lg border p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-medium">
+                                {bill.month} {bill.year}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {t('dueDate')}:{' '}
+                                {new Date(bill.dueDate).toLocaleDateString()}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {t('paidDate')}:{' '}
+                                {bill.paidDate
+                                  ? new Date(bill.paidDate).toLocaleDateString()
+                                  : '—'}
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className="font-semibold">
+                                {formatCurrency(bill.amount)}
+                              </p>
+                              <div className="mt-1 flex items-center justify-end gap-1 text-xs">
                                 <StatusIcon
-                                  className={cn('h-4 w-4', statusInfo.className)}
+                                  className={cn('h-3.5 w-3.5', statusInfo.className)}
                                 />
                                 <span>{statusInfo.label}</span>
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="hidden overflow-x-auto sm:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t('month')}</TableHead>
+                          <TableHead>{t('amount')}</TableHead>
+                          <TableHead>{t('dueDate')}</TableHead>
+                          <TableHead>{t('paidDate')}</TableHead>
+                          <TableHead>{t('status')}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {bills.map(bill => {
+                          const key =
+                            bill.status === 'paid'
+                              ? 'paid'
+                              : bill.status === 'overdue'
+                                ? 'overdue'
+                                : 'unpaid'
+                          const statusInfo = paymentStatusConfig[key]
+                          const StatusIcon = statusInfo.icon
+                          return (
+                            <TableRow key={bill.id}>
+                              <TableCell>
+                                {bill.month} {bill.year}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {formatCurrency(bill.amount)}
+                              </TableCell>
+                              <TableCell>
+                                {new Date(bill.dueDate).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell>
+                                {bill.paidDate
+                                  ? new Date(bill.paidDate).toLocaleDateString()
+                                  : '—'}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <StatusIcon
+                                    className={cn('h-4 w-4', statusInfo.className)}
+                                  />
+                                  <span>{statusInfo.label}</span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               ) : (
                 <div className="py-6 text-center text-muted-foreground">
                   {t('noPaymentHistory')}
@@ -362,11 +411,12 @@ export function FlatDetailDialog({
               )}
             </CardContent>
           </Card>
+        </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <div className="shrink-0 grid grid-cols-1 gap-2 border-t bg-background px-4 py-3 min-[420px]:grid-cols-2 sm:px-6">
             <Button
               variant="outline"
-              className="flex-1"
+              className="h-auto w-full whitespace-normal px-3 py-2"
               onClick={() => onOpenChange(false)}
             >
               {t('close')}
@@ -374,7 +424,7 @@ export function FlatDetailDialog({
             {onEditFlat ? (
               <Button
                 variant="outline"
-                className="flex-1"
+                className="h-auto w-full whitespace-normal px-3 py-2"
                 onClick={() => onEditFlat(flat)}
               >
                 <Pencil className="mr-2 h-4 w-4" />
@@ -385,7 +435,7 @@ export function FlatDetailDialog({
               flat.listingId ? (
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="h-auto w-full whitespace-normal px-3 py-2"
                   asChild
                 >
                   <a href={`/listings/${flat.listingId}`} target="_blank" rel="noreferrer">
@@ -396,7 +446,7 @@ export function FlatDetailDialog({
               ) : (
                 <Button
                   variant="secondary"
-                  className="flex-1"
+                  className="h-auto w-full whitespace-normal px-3 py-2"
                   disabled={publishingListing}
                   onClick={() => onPublishListing(flat)}
                 >
@@ -406,14 +456,14 @@ export function FlatDetailDialog({
               )
             ) : null}
             {!flat.renter ? (
-              <Button className="flex-1" onClick={() => onAssignRenter(flat)}>
+              <Button className="h-auto w-full whitespace-normal px-3 py-2" onClick={() => onAssignRenter(flat)}>
                 {t('assignRenter')}
               </Button>
             ) : null}
             {flat.renter && onEditRenter ? (
               <Button
                 variant="outline"
-                className="flex-1"
+                className="h-auto w-full whitespace-normal px-3 py-2"
                 onClick={() => onEditRenter(flat)}
               >
                 <Pencil className="mr-2 h-4 w-4" />
@@ -423,7 +473,7 @@ export function FlatDetailDialog({
             {flat.renter && onVacateFlat ? (
               <Button
                 variant="destructive"
-                className="flex-1"
+                className="h-auto w-full whitespace-normal px-3 py-2"
                 onClick={() => onVacateFlat(flat)}
               >
                 <LogOut className="mr-2 h-4 w-4" />
@@ -433,7 +483,7 @@ export function FlatDetailDialog({
             {flat.renter ? (
               <Button
                 variant="outline"
-                className="flex-1"
+                className="h-auto w-full whitespace-normal px-3 py-2"
                 onClick={() => onGenerateBill(flat)}
               >
                 {t('generateBill')}
@@ -442,14 +492,13 @@ export function FlatDetailDialog({
             {!flat.renter && flat.status !== 'occupied' && onDeleteFlat ? (
               <Button
                 variant="ghost"
-                className="flex-1 text-destructive hover:text-destructive"
+                className="h-auto w-full whitespace-normal px-3 py-2 text-destructive hover:text-destructive"
                 onClick={() => onDeleteFlat(flat)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 {t('deleteFlat')}
               </Button>
             ) : null}
-          </div>
         </div>
       </DialogContent>
 

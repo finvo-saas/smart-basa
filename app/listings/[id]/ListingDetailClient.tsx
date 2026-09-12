@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -13,6 +13,16 @@ import {
   LoadingState,
 } from '@/components/page'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ImageGallery } from '@/components/property/ImageGallery'
@@ -39,8 +49,8 @@ import { BookingConfirmation } from '@/components/booking/BookingConfirmation'
 import { FavoriteButton } from '@/components/favorites/FavoriteButton'
 import { RatingDisplay } from '@/components/hotel/RatingDisplay'
 import { AvailabilityBadge } from '@/components/shared/AvailabilityBadge'
+import { GlanceFacts, type GlanceFact } from '@/components/shared/GlanceFacts'
 import { InstantBookBadge } from '@/components/shared/InstantBookBadge'
-import { CIMSRegistrationDialog } from '@/components/compliance/CIMSRegistrationDialog'
 import { useMockQuery } from '@/hooks/useMockQuery'
 import { useAppFormat } from '@/hooks/useAppFormat'
 import {
@@ -53,8 +63,11 @@ import {
   fetchReviewSummary,
 } from '@/lib/api/reviews'
 import { createBooking } from '@/lib/api/bookings'
-import { listingPath } from '@/lib/seo/slug'
+import { listingPath, messPath } from '@/lib/seo/slug'
 import { reportDiscoverItem } from '@/lib/api/discover'
+import { toast } from '@/lib/feedback/toast'
+import { rememberAuthReturn } from '@/utils/auth'
+import { hasAuthTokens } from '@/utils/auth-tokens'
 import type { Booking, BookingFormData } from '@/types/booking'
 import type { ReviewFormData } from '@/types/review'
 import {
@@ -71,15 +84,16 @@ import {
 
 export function ListingDetailClient({ id }: { id: string }) {
   const t = useTranslations('property.detail')
-  const ts = useTranslations('living.seats')
+  const tg = useTranslations('living.glance')
   const tContact = useTranslations('contact')
   const { formatCurrency } = useAppFormat()
   const router = useRouter()
   const [showBooking, setShowBooking] = useState(false)
+  const [showReport, setShowReport] = useState(false)
+  const [reporting, setReporting] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
   const [lastBooking, setLastBooking] = useState<Booking | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
-  const [showCims, setShowCims] = useState(false)
   const [reviewTick, setReviewTick] = useState(0)
 
   const loadProperty = useCallback(() => fetchPropertyById(id), [id])
@@ -97,6 +111,20 @@ export function ListingDetailClient({ id }: { id: string }) {
   const { data: summary } = useMockQuery(loadSummary)
   const { data: recommendations } = useMockQuery(loadRecs)
 
+  useEffect(() => {
+    if (!property || typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('book') !== '1' || !hasAuthTokens()) return
+    setShowBooking(true)
+    params.delete('book')
+    const next = params.toString()
+    window.history.replaceState(
+      {},
+      '',
+      `${window.location.pathname}${next ? `?${next}` : ''}`,
+    )
+  }, [property])
+
   const onCall = (phone: string) => {
     window.location.href = `tel:${phone.replace(/\s/g, '')}`
   }
@@ -108,12 +136,6 @@ export function ListingDetailClient({ id }: { id: string }) {
     setBookingError(null)
     const result = await createBooking(property, data)
     if (!result.ok) {
-      if (result.code === 'CIMS_REQUIRED' || result.code === 'FORBIDDEN') {
-        setShowBooking(false)
-        setShowCims(true)
-        setBookingError(result.error)
-        return
-      }
       setBookingError(result.error)
       throw new Error(result.error)
     }
@@ -163,9 +185,94 @@ export function ListingDetailClient({ id }: { id: string }) {
       ? t('requestSeat')
       : t('requestFlat')
 
+  const startRequest = () => {
+    if (!property.available) return
+    if (!hasAuthTokens()) {
+      const next = `${listingPath(property)}?book=1`
+      rememberAuthReturn(next)
+      router.push(`/login?next=${encodeURIComponent(next)}`)
+      return
+    }
+    setShowBooking(true)
+  }
+
+  const submitTakenReport = async () => {
+    setReporting(true)
+    const result = await reportDiscoverItem('listing', property.id)
+    setReporting(false)
+    setShowReport(false)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    toast.success(
+      result.data.alreadyPending ? t('alreadyRentedPending') : t('alreadyRentedSent'),
+    )
+  }
+
   const depositAmount =
     property.rent *
     (property.depositMonths ?? (property.type === 'apartment' ? 2 : 1))
+
+  const isSeatHouse = property.type === 'mess' || property.type === 'hostel'
+  const seatsOpen = isSeatHouse && (property.openSeats ?? 0) > 0
+  const genderLabel =
+    property.gender === 'female'
+      ? tg('genderFemale')
+      : property.gender === 'mixed'
+        ? tg('genderMixed')
+        : property.gender === 'male'
+          ? tg('genderMale')
+          : null
+  const glance: GlanceFact[] = []
+  if (isSeatHouse && property.openSeats != null) {
+    glance.push({
+      id: 'seats',
+      value: seatsOpen ? String(property.openSeats) : tg('full'),
+      label: seatsOpen ? tg('seatsOpen') : tg('noSeats'),
+      tone: seatsOpen ? 'good' : 'muted',
+      emphasis: true,
+    })
+  } else {
+    glance.push({
+      id: 'status',
+      value: property.available ? tg('availableNow') : tg('notAvailable'),
+      label: tg('status'),
+      tone: property.available ? 'good' : 'muted',
+      emphasis: true,
+    })
+  }
+  glance.push({
+    id: 'rent',
+    value: formatCurrency(property.rent),
+    label: tg('perMonth'),
+  })
+  if (genderLabel) {
+    glance.push({
+      id: 'gender',
+      value: genderLabel,
+      label: tg('whoStays'),
+    })
+  }
+  if (isSeatHouse) {
+    glance.push({
+      id: 'meals',
+      value: property.mealIncluded ? tg('mealsYes') : tg('mealsNo'),
+      label: tg('meals'),
+    })
+  } else if (property.bedrooms != null) {
+    glance.push({
+      id: 'beds',
+      value: String(property.bedrooms),
+      label: tg('bedrooms'),
+    })
+  } else if (property.sizeSqft != null) {
+    glance.push({
+      id: 'size',
+      value: `${property.sizeSqft}`,
+      label: tg('size'),
+    })
+  }
 
   return (
     <Layout>
@@ -196,7 +303,7 @@ export function ListingDetailClient({ id }: { id: string }) {
                 {t('chatOwner')}
               </Button>
               <Button
-                onClick={() => setShowBooking(true)}
+                onClick={startRequest}
                 disabled={!property.available}
               >
                 {property.instantBook && <Zap className="mr-2 h-4 w-4" />}
@@ -205,6 +312,8 @@ export function ListingDetailClient({ id }: { id: string }) {
             </div>
           }
         />
+
+        <GlanceFacts items={glance} className="mb-4" />
 
         <div className="mb-6 flex flex-wrap items-center gap-2">
           <AvailabilityBadge available={property.available} />
@@ -387,11 +496,38 @@ export function ListingDetailClient({ id }: { id: string }) {
                     : ''}
                 </p>
               )}
-              {property.openSeats != null &&
+              {isSeatHouse && property.openSeats != null && (
+                <span
+                  className={
+                    seatsOpen
+                      ? 'mt-3 inline-flex items-center rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white'
+                      : 'mt-3 inline-flex items-center rounded-full bg-slate-500 px-3 py-1.5 text-xs font-semibold text-white'
+                  }
+                >
+                  {seatsOpen ? property.openSeats : tg('full')}{' '}
+                  {seatsOpen ? tg('seatsOpen') : tg('noSeats')}
+                </span>
+              )}
+              {property.messId &&
                 (property.type === 'mess' || property.type === 'hostel') && (
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {ts('open', { count: property.openSeats })}
-                </p>
+                <Button
+                  className="mt-3 h-11 w-full rounded-full shadow-md shadow-primary/25"
+                  asChild
+                >
+                  <Link
+                    href={messPath({
+                      id: property.messId,
+                      name: property.name,
+                      city: property.city,
+                    })}
+                  >
+                    <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-200 opacity-90" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-100" />
+                    </span>
+                    {t('viewMessHouse')}
+                  </Link>
+                </Button>
               )}
               <p className="mt-2 text-sm text-muted-foreground">
                 {t('deposit', { amount: formatCurrency(depositAmount) })}
@@ -414,7 +550,7 @@ export function ListingDetailClient({ id }: { id: string }) {
                 className="mt-4 w-full"
                 size="lg"
                 disabled={!property.available}
-                onClick={() => setShowBooking(true)}
+                onClick={startRequest}
               >
                 {property.instantBook && <Zap className="mr-2 h-4 w-4" />}
                 {bookLabel}
@@ -439,12 +575,9 @@ export function ListingDetailClient({ id }: { id: string }) {
               <Button
                 variant="ghost"
                 className="mt-1 w-full text-muted-foreground"
-                onClick={async () => {
-                  await reportDiscoverItem('listing', property.id)
-                  refetch()
-                }}
+                onClick={() => setShowReport(true)}
               >
-                This is already rented
+                {t('alreadyRented')}
               </Button>
             </div>
 
@@ -510,15 +643,23 @@ export function ListingDetailClient({ id }: { id: string }) {
           router.push('/my-bookings')
         }}
       />
-      <CIMSRegistrationDialog
-        open={showCims}
-        onOpenChange={setShowCims}
-        onComplete={() => {
-          setShowCims(false)
-          setBookingError(null)
-          setShowBooking(true)
-        }}
-      />
+      <AlertDialog open={showReport} onOpenChange={setShowReport}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('alreadyRented')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('alreadyRentedConfirm')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={reporting}>{t('alreadyRentedKeep')}</AlertDialogCancel>
+            <AlertDialogAction disabled={reporting} onClick={(event) => {
+              event.preventDefault()
+              void submitTakenReport()
+            }}>
+              {t('alreadyRentedSend')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   )
 }

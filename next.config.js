@@ -66,6 +66,15 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // The browser must recheck the worker. A cached sw.js keeps serving
+        // yesterday's pages and scripts.
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+      {
         source: '/:path*',
         headers: [
           { key: 'X-DNS-Prefetch-Control', value: 'on' },

@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode, useEffect, useState } from 'react'
+import { ReactNode, Suspense, useEffect, useState } from 'react'
 import { AppHeader } from './AppHeader'
 import { Footer } from './Footer'
 import { Navbar } from './Navbar'
@@ -38,7 +38,9 @@ export const Layout = ({ children, userRole }: LayoutProps) => {
       <div className="flex min-h-screen min-w-0 flex-col overflow-x-clip bg-background transition-colors duration-200">
         <SkipToContent />
         <OfflineBanner />
-        <AppHeader />
+        <Suspense fallback={<div className="h-14 border-b border-border bg-background" />}>
+          <AppHeader />
+        </Suspense>
         {isUserLoggedIn && (
           <div className="hidden md:block">
             <Navbar userRole={currentRole} />

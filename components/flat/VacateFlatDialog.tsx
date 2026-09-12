@@ -12,6 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ownerSheetClass,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,6 +27,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { Flat } from '@/types/building'
+import { cn } from '@/lib/utils'
 
 const vacateSchema = z.object({
   advanceNote: z.string().max(2000).optional(),
@@ -84,8 +86,8 @@ export function VacateFlatDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className={cn(ownerSheetClass('sm:max-w-md'), 'gap-4 overflow-y-auto p-4 sm:p-6')}>
+        <DialogHeader className="pr-8 text-left">
           <DialogTitle>
             {t('vacateTitle', { flat: flat?.flatNumber ?? '' })}
           </DialogTitle>

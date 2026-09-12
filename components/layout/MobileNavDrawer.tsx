@@ -178,7 +178,6 @@ export function MobileNavDrawer({
   const handleLogout = async () => {
     close()
     await logout()
-    window.location.assign('/')
   }
 
   const openFocusEditor = () => {

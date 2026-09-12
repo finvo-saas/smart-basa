@@ -199,6 +199,9 @@ export default function MessOverviewPage() {
           actions={
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" asChild>
+                <Link href="/media">My photos</Link>
+              </Button>
+              <Button variant="outline" asChild>
                 <Link href="/mess/student-dashboard">
                   <GraduationCap className="mr-2 h-4 w-4" />
                   {t('overview.previewStudentView')}

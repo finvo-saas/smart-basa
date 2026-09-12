@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Star, Verified } from 'lucide-react'
+import { MapPin, Phone, Star, Verified } from 'lucide-react'
+import { WhatsAppButton } from '@/components/contact/WhatsAppButton'
+import { hasWhatsApp } from '@/lib/contact/whatsapp'
 import { FeaturedBadge } from '@/components/monetization/FeaturedBadge'
 import { FreshnessBadge } from '@/components/discover/FreshnessBadge'
 import { RatingDisplay } from './RatingDisplay'
@@ -47,7 +49,7 @@ export function HotelCard({ hotel, onViewDetails }: HotelCardProps) {
         )}
         <div className="absolute right-2 top-2 flex flex-col gap-2">
           {hotel.verified && (
-            <Badge variant="default" className="bg-background/90 backdrop-blur">
+            <Badge className="border-emerald-600/20 bg-emerald-600 text-white hover:bg-emerald-600">
               <Verified className="mr-1 h-3 w-3" />
               Verified
             </Badge>
@@ -118,19 +120,49 @@ export function HotelCard({ hotel, onViewDetails }: HotelCardProps) {
           </span>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={handleViewDetails}
-            asChild
-          >
-            <Link href={hotelPath(hotel)}>View Details</Link>
-          </Button>
-          <Button className="flex-1" asChild>
-            <Link href={`${hotelPath(hotel)}/book`}>Book Now</Link>
-          </Button>
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="grid min-w-0 grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              className="h-10 w-full min-w-0 overflow-hidden px-2 text-sm font-medium"
+              onClick={handleViewDetails}
+              asChild
+            >
+              <Link href={hotelPath(hotel)}>
+                <span className="truncate">View details</span>
+              </Link>
+            </Button>
+            <Button
+              className="h-10 w-full min-w-0 overflow-hidden px-2 text-sm font-medium"
+              asChild
+            >
+              <Link href={`${hotelPath(hotel)}/book`}>
+                <span className="truncate">Book now</span>
+              </Link>
+            </Button>
+          </div>
+          {hotel.ownerPhone || hasWhatsApp(hotel.ownerWhatsapp) ? (
+            <div className="flex min-w-0 items-center gap-2">
+              {hotel.ownerPhone ? (
+                <Button
+                  variant="outline"
+                  className="h-10 min-w-0 flex-1 overflow-hidden px-2 text-sm font-medium"
+                  asChild
+                >
+                  <a href={`tel:${hotel.ownerPhone}`}>
+                    <Phone className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Call</span>
+                  </a>
+                </Button>
+              ) : null}
+              <WhatsAppButton
+                number={hotel.ownerWhatsapp}
+                message={`Hi, I found ${hotel.name} on Smart Living. Do you have a room available?`}
+                className="h-10 min-w-0 flex-1 overflow-hidden px-2 text-sm font-medium"
+                title="WhatsApp"
+              />
+            </div>
+          ) : null}
         </div>
       </CardContent>
     </Card>

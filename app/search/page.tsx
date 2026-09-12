@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -22,7 +23,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { PropertyCard } from '@/components/property/PropertyCard'
 import { HotelCard } from '@/components/hotel/HotelCard'
-import { MessPublicCard } from '@/components/mess/MessPublicCard'
 import {
   DiscoverCategoryTabs,
   type DiscoverCategory,
@@ -52,7 +52,6 @@ import {
   type AIParsedQuery,
 } from '@/lib/api/properties'
 import { fetchHotels } from '@/lib/api/hotels'
-import { fetchMessList } from '@/lib/api/mess'
 import {
   recordSearchHistory,
   createSavedSearch,
@@ -68,7 +67,6 @@ import {
 import { createBooking } from '@/lib/api/bookings'
 import type {
   Property,
-  PropertyType,
   Gender,
   SeatType,
   MealPlan,
@@ -77,8 +75,11 @@ import type {
 } from '@/types/property'
 import type { BookingFormData, Booking } from '@/types/booking'
 import type { Hotel } from '@/types/hotel'
-import type { Mess } from '@/types/mess'
 import { useTranslations } from 'next-intl'
+import { resolvePlaceQuery, samePlace } from '@/lib/search/placeQuery'
+import { stashPendingSavedSearch } from '@/lib/search/pendingSavedSearch'
+import { rememberAuthReturn } from '@/utils/auth'
+import { hasAuthTokens } from '@/utils/auth-tokens'
 
 const PropertyMap = dynamic(
   () =>
@@ -121,6 +122,12 @@ type SearchFormData = z.infer<typeof searchSchema>
 export default function SearchPage() {
   const t = useTranslations('search')
   const tc = useTranslations('common')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const categoryParam = searchParams.get('category')
+  const cityParam = searchParams.get('city')
+  const areaParam = searchParams.get('area')
+  const aiQueryParam = searchParams.get('q')
   const [showFilters, setShowFilters] = useState(false)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
@@ -146,6 +153,7 @@ export default function SearchPage() {
   const [aiParsed, setAiParsed] = useState<AIParsedQuery | null>(null)
   const [aiResults, setAiResults] = useState<Property[] | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
+  const restoredAiQuery = useRef<string | null>(null)
 
   const chatUserId = getCurrentAccountUserId()
   const loadProperties = useCallback(() => fetchProperties(), [])
@@ -159,9 +167,7 @@ export default function SearchPage() {
   const { data: savedSearches, refetch: refetchSavedSearches } =
     useMockQuery(loadSavedSearches)
   const loadHotels = useCallback(() => fetchHotels(), [])
-  const loadMesses = useCallback(() => fetchMessList(), [])
   const { data: hotels } = useMockQuery(loadHotels)
-  const { data: messes } = useMockQuery(loadMesses)
 
   const publishedProperties = properties ?? []
   const cities = propertyMeta?.cities ?? []
@@ -204,24 +210,88 @@ export default function SearchPage() {
   const { watch, setValue, handleSubmit, reset } = form
   const formValues = watch()
 
+  const selectedType: DiscoverCategory =
+    categoryParam === 'mess' ||
+    categoryParam === 'apartment' ||
+    categoryParam === 'hostel' ||
+    categoryParam === 'hotel'
+      ? categoryParam
+      : 'all'
+
+  const leaveAiMatch = useCallback(() => {
+    setAiResults(null)
+    setAiParsed(null)
+    setAiError(null)
+    restoredAiQuery.current = null
+  }, [])
+
+  const writeFiltersToUrl = useCallback(
+    (next: { city?: string; area?: string; category?: DiscoverCategory }) => {
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete('q')
+      params.delete('save')
+      if (next.category === undefined) {
+        // keep the current category param
+      } else if (next.category === 'all') {
+        params.delete('category')
+      } else {
+        params.set('category', next.category)
+      }
+      if (next.city) params.set('city', next.city)
+      else params.delete('city')
+      if (next.area) params.set('area', next.area)
+      else params.delete('area')
+      const qs = params.toString()
+      router.replace(qs ? `/search?${qs}` : '/search', { scroll: false })
+    },
+    [router, searchParams],
+  )
+
+  const applyCategory = useCallback(
+    (next: DiscoverCategory) => {
+      leaveAiMatch()
+      setValue('propertyType', next)
+      writeFiltersToUrl({
+        city: formValues.city,
+        area: formValues.area,
+        category: next,
+      })
+    },
+    [formValues.area, formValues.city, leaveAiMatch, setValue, writeFiltersToUrl],
+  )
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const category = params.get('category')
-    const cityFromUrl = params.get('city')
-    if (
-      category === 'all' ||
-      category === 'mess' ||
-      category === 'apartment' ||
-      category === 'hostel' ||
-      category === 'hotel'
-    ) {
-      setValue('propertyType', category)
+    setValue('propertyType', selectedType)
+  }, [selectedType, setValue])
+
+  useEffect(() => {
+    const rawCity = cityParam?.trim()
+    const rawArea = areaParam?.trim()
+    if (!rawCity && !rawArea) return
+
+    const resolved = rawCity
+      ? resolvePlaceQuery(rawCity, propertyMeta)
+      : {}
+    const city =
+      resolved.city ||
+      propertyMeta?.cities.find(item => samePlace(item, rawCity)) ||
+      (rawCity && !propertyMeta ? rawCity : undefined)
+    const area =
+      resolved.area ||
+      (rawArea
+        ? (propertyMeta?.areasByCity[city || ''] ?? []).find(item =>
+            samePlace(item, rawArea),
+          ) || rawArea
+        : undefined)
+
+    if (city && propertyMeta?.cities.includes(city)) {
+      setSelectedCity(city)
+      setValue('city', city)
+    } else if (city) {
+      setValue('city', city)
     }
-    if (cityFromUrl) {
-      setSelectedCity(cityFromUrl)
-      setValue('city', cityFromUrl)
-    }
-  }, [setValue])
+    if (area) setValue('area', area)
+  }, [cityParam, areaParam, propertyMeta, setValue])
 
   // Handle get current location
   const handleGetCurrentLocation = async () => {
@@ -256,18 +326,18 @@ export default function SearchPage() {
     let filtered = [...publishedProperties]
 
     // Filter by type
-    if (formValues.propertyType !== 'all') {
-      filtered = filtered.filter(p => p.type === formValues.propertyType)
+    if (selectedType !== 'all') {
+      filtered = filtered.filter(p => p.type === selectedType)
     }
 
     // Filter by city
     if (formValues.city) {
-      filtered = filtered.filter(p => p.city === formValues.city)
+      filtered = filtered.filter(p => samePlace(p.city, formValues.city))
     }
 
     // Filter by area
     if (formValues.area) {
-      filtered = filtered.filter(p => p.area === formValues.area)
+      filtered = filtered.filter(p => samePlace(p.area, formValues.area))
     }
 
     // Filter by rent range
@@ -284,9 +354,9 @@ export default function SearchPage() {
     // Filter by gender (for mess/hostel)
     if (
       formValues.gender &&
-      (formValues.propertyType === 'mess' ||
-        formValues.propertyType === 'hostel' ||
-        formValues.propertyType === 'all')
+      (selectedType === 'mess' ||
+        selectedType === 'hostel' ||
+        selectedType === 'all')
     ) {
       filtered = filtered.filter(
         p =>
@@ -298,9 +368,9 @@ export default function SearchPage() {
     // Filter by seat type (for mess/hostel)
     if (
       formValues.seatType &&
-      (formValues.propertyType === 'mess' ||
-        formValues.propertyType === 'hostel' ||
-        formValues.propertyType === 'all')
+      (selectedType === 'mess' ||
+        selectedType === 'hostel' ||
+        selectedType === 'all')
     ) {
       filtered = filtered.filter(
         p =>
@@ -312,7 +382,7 @@ export default function SearchPage() {
     // Filter by meal included (for mess)
     if (
       formValues.mealIncluded !== undefined &&
-      (formValues.propertyType === 'mess' || formValues.propertyType === 'all')
+      (selectedType === 'mess' || selectedType === 'all')
     ) {
       filtered = filtered.filter(
         p => p.type === 'mess' && p.mealIncluded === formValues.mealIncluded
@@ -322,7 +392,7 @@ export default function SearchPage() {
     // Filter by meal plan (for mess)
     if (
       formValues.mealPlan &&
-      (formValues.propertyType === 'mess' || formValues.propertyType === 'all')
+      (selectedType === 'mess' || selectedType === 'all')
     ) {
       filtered = filtered.filter(
         p => p.type === 'mess' && p.mealPlan === formValues.mealPlan
@@ -421,74 +491,56 @@ export default function SearchPage() {
     }
 
     return filtered
-  }, [formValues, searchByLocation, userLocation, searchRadius, publishedProperties])
+  }, [
+    formValues,
+    selectedType,
+    searchByLocation,
+    userLocation,
+    searchRadius,
+    publishedProperties,
+  ])
 
   const displayProperties = useMemo(() => {
     if (aiResults) return aiResults
-    if (formValues.propertyType === 'hotel') return []
-    if (formValues.propertyType === 'all') {
+    if (selectedType === 'hotel') return []
+    if (selectedType === 'all') {
       return filteredProperties.filter(p => p.type !== 'hotel')
     }
     return filteredProperties
-  }, [aiResults, filteredProperties, formValues.propertyType])
+  }, [aiResults, filteredProperties, selectedType])
 
   const filteredHotels = useMemo(() => {
-    if (formValues.propertyType !== 'all' && formValues.propertyType !== 'hotel') {
+    if (selectedType !== 'hotel') {
       return [] as Hotel[]
     }
     let list = [...(hotels ?? [])]
-    if (formValues.city) list = list.filter(h => h.city === formValues.city)
-    if (formValues.area) list = list.filter(h => h.area === formValues.area)
+    if (formValues.city) list = list.filter(h => samePlace(h.city, formValues.city))
+    if (formValues.area) list = list.filter(h => samePlace(h.area, formValues.area))
     if (formValues.verifiedOnly) list = list.filter(h => h.verified)
     return list
   }, [
     hotels,
-    formValues.propertyType,
+    selectedType,
     formValues.city,
     formValues.area,
     formValues.verifiedOnly,
   ])
 
-  const filteredMesses = useMemo(() => {
-    if (formValues.propertyType !== 'all' && formValues.propertyType !== 'mess') {
-      return [] as Mess[]
-    }
-    let list = [...(messes ?? [])]
-    if (formValues.city) {
-      list = list.filter(m => m.city === formValues.city)
-    }
-    if (formValues.availableOnly) {
-      list = list.filter(m => m.availableSeats > 0)
-    }
-    if (formValues.gender) {
-      list = list.filter(
-        m => m.gender === formValues.gender || m.gender === 'mixed',
-      )
-    }
-    list = list.filter(
-      m =>
-        m.monthlyFee >= formValues.rentRange[0] &&
-        m.monthlyFee <= formValues.rentRange[1],
-    )
-    return list
-  }, [
-    messes,
-    formValues.propertyType,
-    formValues.city,
-    formValues.availableOnly,
-    formValues.gender,
-    formValues.rentRange,
-  ])
-
   const usingAiMatch = aiResults != null
   const totalResults = usingAiMatch
     ? displayProperties.length
-    : displayProperties.length + filteredHotels.length + filteredMesses.length
+    : displayProperties.length + filteredHotels.length
 
-  const handleAISearch = useCallback(async (query: string) => {
+  const handleAISearch = useCallback(async (
+    query: string,
+    options?: { updateUrl?: boolean },
+  ) => {
+    const sentence = query.trim()
+    if (!sentence) return
+    restoredAiQuery.current = sentence
     setAiLoading(true)
     setAiError(null)
-    const result = await fetchAIMatch(query)
+    const result = await fetchAIMatch(sentence)
     setAiLoading(false)
     if (!result.ok) {
       setAiError(result.error)
@@ -498,19 +550,38 @@ export default function SearchPage() {
     }
     setAiParsed(result.data.parsedQuery)
     setAiResults(result.data.results)
-  }, [])
+    setSelectedCity('all')
+    setValue('city', undefined)
+    setValue('area', undefined)
+    setValue('propertyType', 'all')
+    if (options?.updateUrl === false) return
+    const next = `/search?q=${encodeURIComponent(sentence)}`
+    if (aiQueryParam === sentence && !cityParam && !areaParam && !categoryParam) {
+      return
+    }
+    router.push(next)
+  }, [aiQueryParam, areaParam, categoryParam, cityParam, router, setValue])
+
+  useEffect(() => {
+    const sentence = aiQueryParam?.trim()
+    if (!sentence || restoredAiQuery.current === sentence) return
+    restoredAiQuery.current = sentence
+    void handleAISearch(sentence, { updateUrl: false })
+  }, [aiQueryParam, handleAISearch])
 
   const handleClearAISearch = useCallback(() => {
     setAiParsed(null)
     setAiResults(null)
     setAiError(null)
-  }, [])
+    restoredAiQuery.current = null
+    if (aiQueryParam) router.push('/search')
+  }, [aiQueryParam, router])
 
   // Save search to history when filters change (after filtering is done)
   useEffect(() => {
     // Only save if there are meaningful filters and we have results
     const hasFilters =
-      formValues.propertyType !== 'all' ||
+      selectedType !== 'all' ||
       formValues.city ||
       formValues.area ||
       formValues.rentRange[0] !== 2000 ||
@@ -586,6 +657,12 @@ export default function SearchPage() {
 
   const handleReset = () => {
     handleClearAISearch()
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('city')
+    params.delete('area')
+    params.delete('q')
+    const qs = params.toString()
+    router.replace(qs ? `/search?${qs}` : '/search', { scroll: false })
     setSelectedCity('all')
     setUserLocation(null)
     setSearchByLocation(false)
@@ -614,6 +691,25 @@ export default function SearchPage() {
     })
   }
 
+  const openSaveSearch = () => {
+    if (!hasAuthTokens()) {
+      const filters: SearchFilters = {
+        ...formValues,
+        city: formValues.city || cityParam || undefined,
+        area: formValues.area || areaParam || undefined,
+        propertyType:
+          selectedType !== 'all' ? selectedType : formValues.propertyType,
+      }
+      stashPendingSavedSearch(filters, aiQueryParam || undefined)
+      rememberAuthReturn('/saved-searches')
+      setShowFilters(false)
+      router.push('/login?next=%2Fsaved-searches')
+      return
+    }
+    setShowFilters(false)
+    setShowSaveSearchDialog(true)
+  }
+
   const handleSaveSearch = async (
     name: string,
     filters: SearchFilters,
@@ -631,7 +727,9 @@ export default function SearchPage() {
     if (result.ok) {
       refetchSavedSearches()
       alert(t('page.actions.saveSuccess', { name }))
+      return
     }
+    alert(result.error)
   }
 
   const isSearchSaved = useMemo(() => {
@@ -650,8 +748,27 @@ export default function SearchPage() {
   }, [formValues, savedSearches])
 
   const handleCityChange = (city: string) => {
+    const nextCity = city === 'all' ? undefined : city
+    leaveAiMatch()
     setSelectedCity(city)
-    setValue('city', city === 'all' ? undefined : city)
+    setValue('city', nextCity)
+    setValue('area', undefined)
+    writeFiltersToUrl({
+      city: nextCity,
+      area: undefined,
+      category: selectedType,
+    })
+  }
+
+  const handleAreaChange = (area: string) => {
+    const nextArea = area === 'all' ? undefined : area
+    leaveAiMatch()
+    setValue('area', nextArea)
+    writeFiltersToUrl({
+      city: selectedCity === 'all' ? undefined : selectedCity,
+      area: nextArea,
+      category: selectedType,
+    })
   }
 
   const handleNearbyFacilityToggle = (facility: string) => {
@@ -667,7 +784,7 @@ export default function SearchPage() {
 
   return (
     <Layout>
-      <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 lg:px-8 sm:py-6">
+      <div className="mx-auto w-full min-w-0 max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
         {/* Header */}
         <div className="mb-4 sm:mb-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -677,6 +794,7 @@ export default function SearchPage() {
               </h1>
               <p className="mt-1.5 text-sm text-muted-foreground">
                 {t('page.results', { count: totalResults })}
+                {formValues.city ? ` · ${formValues.city}` : ''}
                 {searchByLocation && userLocation && (
                   <span className="ml-2 inline-flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5" />
@@ -718,7 +836,14 @@ export default function SearchPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => (window.location.href = '/saved-searches')}
+                onClick={() => {
+                  if (!hasAuthTokens()) {
+                    rememberAuthReturn('/saved-searches')
+                    router.push('/login?next=%2Fsaved-searches')
+                    return
+                  }
+                  router.push('/saved-searches')
+                }}
                 className="hidden sm:flex"
               >
                 <Bookmark className="mr-2 h-4 w-4" />
@@ -739,9 +864,10 @@ export default function SearchPage() {
               </Button>
             </div>
           </div>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 min-w-0 space-y-3">
             <AISearchBar
               onSearch={handleAISearch}
+              queryFromUrl={aiQueryParam ?? ''}
               loading={aiLoading}
               parsedQuery={aiParsed}
             />
@@ -757,18 +883,12 @@ export default function SearchPage() {
                 className="h-8 px-2 text-muted-foreground"
               >
                 <X className="mr-1.5 h-3.5 w-3.5" />
-                Clear AI match
+                {t('page.ai.clear')}
               </Button>
             )}
             <DiscoverCategoryTabs
-              value={(formValues.propertyType || 'all') as DiscoverCategory}
-              onChange={next => {
-                setValue('propertyType', next)
-                const params = new URLSearchParams(window.location.search)
-                params.set('category', next)
-                const qs = params.toString()
-                window.history.replaceState(null, '', qs ? `/search?${qs}` : '/search')
-              }}
+              value={selectedType}
+              onChange={applyCategory}
               labels={{
                 all: t('page.propertyTypes.all'),
                 mess: t('page.propertyTypes.mess'),
@@ -777,20 +897,42 @@ export default function SearchPage() {
                 hotel: t('page.propertyTypes.hotel'),
               }}
             />
+            <div className="flex flex-wrap gap-x-4">
+              {(selectedType === 'mess' ||
+                selectedType === 'all') && (
+                <Button variant="link" size="sm" className="h-auto px-0" asChild>
+                  <Link href="/messes">{t('page.browseAllMesses')}</Link>
+                </Button>
+              )}
+              {(selectedType === 'hotel' ||
+                selectedType === 'all') && (
+                <Button variant="link" size="sm" className="h-auto px-0" asChild>
+                  <Link href="/hotels">{t('page.browseAllHotels')}</Link>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-          {/* Filters Sidebar */}
+          {showFilters ? (
+            <button
+              type="button"
+              className="fixed inset-0 z-50 bg-black/50 lg:hidden"
+              aria-label={tc('close')}
+              onClick={() => setShowFilters(false)}
+            />
+          ) : null}
+          {/* Filters: modal on mobile, sidebar from lg up */}
           <div
-            className={`${
+            className={
               showFilters
-                ? 'fixed inset-0 z-50 bg-background p-4 overflow-y-auto'
-                : 'hidden'
-            } lg:relative lg:block lg:w-80 lg:shrink-0`}
+                ? 'fixed inset-x-4 top-10 bottom-10 z-[60] flex overflow-hidden rounded-2xl border bg-background shadow-2xl sm:inset-x-auto sm:left-1/2 sm:w-[min(28rem,calc(100%-3rem))] sm:-translate-x-1/2 lg:static lg:inset-auto lg:z-auto lg:block lg:h-auto lg:w-80 lg:max-w-none lg:shrink-0 lg:translate-x-0 lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none'
+                : 'hidden lg:relative lg:block lg:w-80 lg:shrink-0'
+            }
           >
-            <Card className="h-full border-border/50 shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b pb-4">
+            <Card className="flex h-full min-h-0 flex-col overflow-hidden border-border/50 shadow-sm lg:h-auto lg:overflow-visible">
+              <CardHeader className="flex shrink-0 flex-row items-center justify-between space-y-0 border-b pb-4">
                 <CardTitle className="text-lg font-semibold">{tc('filters')}</CardTitle>
                 <Button
                   variant="ghost"
@@ -801,7 +943,7 @@ export default function SearchPage() {
                   <X className="h-4 w-4" />
                 </Button>
               </CardHeader>
-              <CardContent className="space-y-5 pt-6">
+              <CardContent className="min-h-0 flex-1 space-y-5 overflow-y-auto pt-6 lg:overflow-visible">
                 <form onSubmit={handleSubmit(() => {})} className="space-y-5">
                   {/* City Selection */}
                   <div className="space-y-2.5">
@@ -832,12 +974,7 @@ export default function SearchPage() {
                         <Label className="text-sm font-semibold">{t('page.filters.area')}</Label>
                         <Select
                           value={formValues.area || 'all'}
-                          onValueChange={value =>
-                            setValue(
-                              'area',
-                              value === 'all' ? undefined : value
-                            )
-                          }
+                          onValueChange={handleAreaChange}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder={t('page.filters.selectArea')} />
@@ -860,9 +997,9 @@ export default function SearchPage() {
                       {t('page.filters.propertyType')}
                     </Label>
                     <RadioGroup
-                      value={formValues.propertyType}
-                      onValueChange={(value: PropertyType | 'all') =>
-                        setValue('propertyType', value as PropertyType | 'all')
+                      value={selectedType}
+                      onValueChange={value =>
+                        applyCategory(value as DiscoverCategory)
                       }
                     >
                       <div className="flex items-center space-x-2">
@@ -977,9 +1114,9 @@ export default function SearchPage() {
                   </div>
 
                   {/* Gender (for Mess/Hostel) */}
-                  {(formValues.propertyType === 'mess' ||
-                    formValues.propertyType === 'hostel' ||
-                    formValues.propertyType === 'all') && (
+                  {(selectedType === 'mess' ||
+                    selectedType === 'hostel' ||
+                    selectedType === 'all') && (
                     <div className="space-y-2.5">
                       <Label className="text-sm font-semibold">{t('page.filters.gender')}</Label>
                       <Select
@@ -1005,9 +1142,9 @@ export default function SearchPage() {
                   )}
 
                   {/* Seat Type (for Mess/Hostel) */}
-                  {(formValues.propertyType === 'mess' ||
-                    formValues.propertyType === 'hostel' ||
-                    formValues.propertyType === 'all') && (
+                  {(selectedType === 'mess' ||
+                    selectedType === 'hostel' ||
+                    selectedType === 'all') && (
                     <div className="space-y-2.5">
                       <Label className="text-sm font-semibold">{t('page.filters.seatType')}</Label>
                       <Select
@@ -1032,7 +1169,7 @@ export default function SearchPage() {
                   )}
 
                   {/* Meal Included (for Mess) */}
-                  {formValues.propertyType === 'mess' && (
+                  {selectedType === 'mess' && (
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between">
                         <Label className="text-sm font-semibold">
@@ -1236,8 +1373,8 @@ export default function SearchPage() {
                       </div>
 
                       {/* Apartment layout filters */}
-                      {(formValues.propertyType === 'apartment' ||
-                        formValues.propertyType === 'all') && (
+                      {(selectedType === 'apartment' ||
+                        selectedType === 'all') && (
                         <div className="space-y-4 rounded-lg border bg-muted/20 p-3">
                           <Label className="text-sm font-semibold">
                             {t('page.filters.apartmentSection')}
@@ -1435,11 +1572,19 @@ export default function SearchPage() {
                     </div>
                   )}
 
+                  <Button
+                    type="button"
+                    className="w-full lg:hidden"
+                    onClick={() => setShowFilters(false)}
+                  >
+                    {t('page.actions.showResults')}
+                  </Button>
+
                   {/* Save Search Button */}
                   <Button
                     type="button"
                     variant={isSearchSaved ? 'default' : 'outline'}
-                    onClick={() => setShowSaveSearchDialog(true)}
+                    onClick={openSaveSearch}
                     className="w-full"
                   >
                     {isSearchSaved ? (
@@ -1493,14 +1638,10 @@ export default function SearchPage() {
                 </CardContent>
               </Card>
             ) : viewMode === 'list' ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
                 {!usingAiMatch &&
                   filteredHotels.map(hotel => (
                     <HotelCard key={`hotel-${hotel.id}`} hotel={hotel} />
-                  ))}
-                {!usingAiMatch &&
-                  filteredMesses.map(mess => (
-                    <MessPublicCard key={`mess-${mess.id}`} mess={mess} />
                   ))}
                 {displayProperties.map(property => {
                   // Calculate distance if location search is enabled
@@ -1549,7 +1690,7 @@ export default function SearchPage() {
               <Card>
                 <CardContent className="p-0">
                   <PropertyMap
-                    properties={usingAiMatch ? displayProperties : filteredProperties}
+                    properties={displayProperties}
                     onPropertyClick={handleViewDetails}
                     center={userLocation || undefined}
                     height="calc(100vh - 300px)"

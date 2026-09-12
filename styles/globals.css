@@ -70,6 +70,25 @@
     padding-right: 0 !important;
   }
 
+  /*
+   * Select menus lock body scroll. That shifts the page left and clips the
+   * sticky header. Cancel the lock only while a select is open — dialogs stay locked.
+   */
+  html body[data-scroll-locked][data-select-open] {
+    overflow: visible !important;
+    position: static !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+    padding-top: 0 !important;
+    overscroll-behavior: auto !important;
+  }
+
+  html body[data-select-open] header {
+    pointer-events: auto;
+  }
+
   :focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }

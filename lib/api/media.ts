@@ -31,10 +31,36 @@ export type MediaKind =
   | 'video'
 
 export type UploadedMedia = {
+  id?: string
   url: string
   key?: string
   name: string
   kind: string
+  visibility?: 'public' | 'private'
+}
+
+export type OwnerMediaAsset = {
+  id: string
+  url: string
+  key: string
+  kind: string
+  name: string
+  contentType: string
+  sizeBytes: number
+  visibility: 'public' | 'private'
+  createdAt: string | null
+}
+
+export async function fetchMediaLibrary(params?: {
+  kind?: MediaKind | string
+  images?: boolean
+  limit?: number
+}): Promise<ApiResult<OwnerMediaAsset[]>> {
+  const query = new URLSearchParams()
+  if (params?.kind) query.set('kind', params.kind)
+  query.set('images', params?.images === false ? '0' : '1')
+  if (params?.limit) query.set('limit', String(params.limit))
+  return apiRequest(`/media/?${query.toString()}`)
 }
 
 export async function uploadMediaFile(
@@ -61,4 +87,20 @@ export async function uploadMediaFiles(
     urls.push(result.data.url)
   }
   return { ok: true, data: urls }
+}
+
+/** Delete a previously uploaded object from Spaces (by URL or storage key). */
+export async function deleteMediaFile(params: {
+  url?: string
+  key?: string
+  kind?: MediaKind
+}): Promise<ApiResult<{ deleted: boolean; key: string }>> {
+  return apiRequest('/media/delete/', {
+    method: 'POST',
+    body: {
+      url: params.url || '',
+      key: params.key || '',
+      kind: params.kind || '',
+    },
+  })
 }

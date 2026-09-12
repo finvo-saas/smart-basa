@@ -39,6 +39,8 @@ import { InstantBookBadge } from '@/components/shared/InstantBookBadge'
 import { useRouter } from 'next/navigation'
 import type { Property } from '@/types/property'
 import { listingPath } from '@/lib/seo/slug'
+import { rememberAuthReturn } from '@/utils/auth'
+import { hasAuthTokens } from '@/utils/auth-tokens'
 import type { BookingFormData } from '@/types/booking'
 
 interface PropertyDetailDialogProps {
@@ -94,6 +96,13 @@ export function PropertyDetailDialog({
   }
 
   const handleBookingClick = () => {
+    if (!hasAuthTokens()) {
+      const next = `${listingPath(property)}?book=1`
+      rememberAuthReturn(next)
+      onOpenChange(false)
+      router.push(`/login?next=${encodeURIComponent(next)}`)
+      return
+    }
     if (onBookingSubmit) {
       setShowBookingForm(true)
     } else if (onRequest) {

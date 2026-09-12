@@ -43,6 +43,7 @@ import type { Mess, MessMember, Seat } from '@/types/mess'
 import type { MessMemberInput } from '@/lib/api/mess'
 import { fetchMessSeats } from '@/lib/api/mess'
 import { uploadMediaFile } from '@/lib/api/media'
+import { OwnerMediaPicker } from '@/components/media/OwnerMediaPicker'
 import { ok } from '@/lib/api/http'
 import { useMockQuery } from '@/hooks/useMockQuery'
 import { toast } from '@/lib/feedback/toast'
@@ -273,6 +274,10 @@ export function MemberFormDialog({
                   </p>
                 </div>
               </div>
+              <OwnerMediaPicker
+                selected={photoUrl ? [photoUrl] : []}
+                onSelect={asset => setPhotoUrl(asset.url)}
+              />
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField

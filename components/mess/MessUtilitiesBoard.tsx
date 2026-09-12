@@ -31,6 +31,26 @@ function manualEntries(profile: MessUtilityProfile): [string, string][] {
     .map(([key, value]) => [key, value == null ? '' : String(value)])
 }
 
+function mappedLabel(
+  t: ReturnType<typeof useTranslations>,
+  group:
+    | 'availabilityValues'
+    | 'sourceValues'
+    | 'sheddingValues'
+    | 'scoreLabels',
+  raw: string | null | undefined,
+): string {
+  const value = (raw || '').trim()
+  if (!value) return '—'
+  const key = `${group}.${value}`
+  if (typeof t.has === 'function' && t.has(key as never)) {
+    return t(key as never)
+  }
+  // Custom owner text (e.g. freeform water source) — show as entered.
+  if (group === 'sourceValues') return value
+  return value.replace(/_/g, ' ')
+}
+
 export function MessUtilitiesBoard({ utilities }: { utilities: MessUtilities }) {
   const t = useTranslations('mess.publicDetail')
   const water = utilities.water
@@ -57,15 +77,19 @@ export function MessUtilitiesBoard({ utilities }: { utilities: MessUtilities }) 
                 <Droplets className="h-4 w-4 text-sky-600" />
                 {t('waterReliability')}
               </p>
-              <Badge variant="outline">{water.label}</Badge>
+              <Badge variant="outline">
+                {mappedLabel(t, 'scoreLabels', water.label)}
+              </Badge>
             </div>
             <ScoreRing score={water.score} tone="water" />
             <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
               <li>
-                {t('availability')}: {water.profile.availability || '—'}
+                {t('availability')}:{' '}
+                {mappedLabel(t, 'availabilityValues', water.profile.availability)}
               </li>
               <li>
-                {t('source')}: {water.profile.source || '—'}
+                {t('source')}:{' '}
+                {mappedLabel(t, 'sourceValues', water.profile.source)}
               </li>
               <li>
                 {t('filter')}: {water.profile.hasFilter ? t('yes') : t('no')}
@@ -82,12 +106,19 @@ export function MessUtilitiesBoard({ utilities }: { utilities: MessUtilities }) 
                 <Zap className="h-4 w-4 text-amber-600" />
                 {t('electricReliability')}
               </p>
-              <Badge variant="outline">{power.label}</Badge>
+              <Badge variant="outline">
+                {mappedLabel(t, 'scoreLabels', power.label)}
+              </Badge>
             </div>
             <ScoreRing score={power.score} tone="power" />
             <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
               <li>
-                {t('availability')}: {power.profile.availability || '—'}
+                {t('availability')}:{' '}
+                {mappedLabel(
+                  t,
+                  'availabilityValues',
+                  power.profile.availability,
+                )}
               </li>
               <li>
                 IPS: {power.profile.hasIps ? t('yes') : t('no')}
@@ -97,7 +128,12 @@ export function MessUtilitiesBoard({ utilities }: { utilities: MessUtilities }) 
                 {power.profile.hasGenerator ? t('yes') : t('no')}
               </li>
               <li>
-                {t('loadShedding')}: {power.profile.loadSheddingLevel || '—'}
+                {t('loadShedding')}:{' '}
+                {mappedLabel(
+                  t,
+                  'sheddingValues',
+                  power.profile.loadSheddingLevel,
+                )}
               </li>
             </ul>
           </div>

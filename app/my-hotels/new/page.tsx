@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select'
 import { registerHotel } from '@/lib/api/hotels'
 import { uploadMediaFile } from '@/lib/api/media'
+import { OwnerMediaPicker } from '@/components/media/OwnerMediaPicker'
 import { toast } from '@/lib/feedback/toast'
 import { useOwnerFocus } from '@/hooks/useOwnerFocus'
 import { VerticalLockedEmptyState } from '@/components/onboarding'
@@ -487,6 +488,15 @@ export default function RegisterHotelPage() {
                         }
                       />
                     </div>
+                    <OwnerMediaPicker
+                      selected={
+                        form.watch('imageUrl') ? [String(form.watch('imageUrl'))] : []
+                      }
+                      onSelect={asset => {
+                        form.setValue('imageUrl', asset.url, { shouldValidate: true })
+                        setCoverFile(null)
+                      }}
+                    />
                     <div className="space-y-2">
                       <Label>License document</Label>
                       <Input

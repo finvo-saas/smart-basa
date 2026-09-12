@@ -12,6 +12,7 @@
   "manageProperties": "সম্পত্তি পরিচালনা",
   "renter": {
     "greeting": "স্বাগতম",
+    "dismissWelcome": "এই ভিজিটে স্বাগত বার্তা বন্ধ করুন",
     "profile": "প্রোফাইল",
     "profileCompletion": "প্রোফাইল",
     "overdueTitle": "{count}টি বকেয়া বিল",

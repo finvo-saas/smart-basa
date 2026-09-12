@@ -9,6 +9,8 @@
     "savedSearchesLink": "Saved searches",
     "compareAreas": "Compare areas",
     "roommates": "Find roommates",
+    "browseAllMesses": "Browse all messes",
+    "browseAllHotels": "Browse all hotels",
     "locationError": "Unable to get your location. Please enable location services.",
     "withinRadius": "within {distance}",
     "viewMode": {
@@ -68,10 +70,16 @@
       "office": "Office"
     },
     "ai": {
-      "placeholder": "Describe the home you need in Bangla or English…",
+      "placeholder": "Describe the home you need…",
       "match": "AI Match",
       "matching": "Matching…",
-      "try": "Try:"
+      "try": "Try:",
+      "clear": "Clear AI match",
+      "examples": [
+        "2-bedroom flat in Mohammadpur under 15,000 with a lift",
+        "Dhanmondi mess for male students under 8,000",
+        "Family flat in Uttara within 20,000"
+      ]
     },
     "actions": {
       "search": "Search",
@@ -83,7 +91,8 @@
       "book": "Book",
       "viewDetails": "View details",
       "gettingLocation": "Getting location…",
-      "useMyLocation": "Use my location"
+      "useMyLocation": "Use my location",
+      "showResults": "Show results"
     },
     "propertyTypes": {
       "all": "All",

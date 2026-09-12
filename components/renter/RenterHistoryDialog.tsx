@@ -7,6 +7,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  ownerSheetClass,
 } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -171,9 +172,9 @@ export function RenterHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl sm:text-2xl">
+      <DialogContent className={cn(ownerSheetClass('sm:max-w-3xl'), 'gap-4 overflow-y-auto p-4 sm:p-6')}>
+        <DialogHeader className="pr-8 text-left">
+          <DialogTitle className="break-words text-lg sm:text-2xl">
             Renter History
           </DialogTitle>
           <DialogDescription>{renterName}</DialogDescription>
@@ -226,7 +227,7 @@ export function RenterHistoryDialog({
         </div>
 
         <Tabs defaultValue="rentals" className="w-full">
-          <TabsList className="w-full justify-start sm:grid sm:grid-cols-5">
+          <TabsList className="h-auto w-full justify-start">
             <TabsTrigger value="rentals">Rentals</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="complaints">Complaints</TabsTrigger>
@@ -241,9 +242,9 @@ export function RenterHistoryDialog({
               return (
                 <Card key={rental.id}>
                   <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <CardTitle className="break-words text-base sm:text-lg">
                           {rental.propertyName}
                         </CardTitle>
                         <p className="text-sm text-muted-foreground mt-1">
@@ -260,7 +261,7 @@ export function RenterHistoryDialog({
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       <div>
                         <p className="text-xs text-muted-foreground">
                           Monthly Rent

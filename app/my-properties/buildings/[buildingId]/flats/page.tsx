@@ -223,6 +223,10 @@ function FlatsPageContent() {
         area: data.area,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
+        electricityBill: data.electricityBill ?? null,
+        gasBill: data.gasBill ?? null,
+        internetBill: data.internetBill ?? null,
+        waterBill: data.waterBill ?? null,
       })
       if (!result.ok) {
         setErrorMessage(result.error || t('saveError'))
@@ -240,6 +244,10 @@ function FlatsPageContent() {
         area: data.area,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
+        electricityBill: data.electricityBill ?? null,
+        gasBill: data.gasBill ?? null,
+        internetBill: data.internetBill ?? null,
+        waterBill: data.waterBill ?? null,
       })
       if (!result.ok) {
         setErrorMessage(result.error || t('saveError'))
@@ -327,7 +335,7 @@ function FlatsPageContent() {
       <Button
         variant="ghost"
         onClick={() => router.push('/my-properties')}
-        className="-ml-2 mb-4"
+        className="-ml-2 mb-4 h-auto whitespace-normal"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         {tb('backToBuildings')}
@@ -337,9 +345,10 @@ function FlatsPageContent() {
         title={building.name}
         description={building.address}
         actions={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Button
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() =>
                 router.push(`/my-properties/buildings/${buildingId}/floors`)
               }
@@ -348,6 +357,7 @@ function FlatsPageContent() {
               {t('manageFloors')}
             </Button>
             <Button
+              className="w-full sm:w-auto"
               onClick={() => {
                 setFormFlat(null)
                 setIsFormOpen(true)
@@ -381,7 +391,7 @@ function FlatsPageContent() {
         <div className="rounded-xl border bg-card p-3">
           <p className="text-xs text-muted-foreground">{t('board.occupancy')}</p>
           <p className="text-2xl font-semibold tabular-nums">{occupancyPct}%</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 break-words text-[11px] text-muted-foreground">
             {t('board.rentCollected', {
               collected: formatCurrency(occupiedRent),
               total: formatCurrency(totalRent),
@@ -401,7 +411,7 @@ function FlatsPageContent() {
         </div>
       ) : null}
 
-      <div className="mb-6 flex flex-wrap items-center gap-4">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">{t('filters')}</span>
@@ -410,7 +420,7 @@ function FlatsPageContent() {
           value={statusFilter}
           onValueChange={value => setStatusFilter(value as FlatStatus | 'all')}
         >
-          <SelectTrigger className="w-auto min-w-[7.5rem] flex-1 sm:w-[180px] sm:flex-none">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder={t('statusPlaceholder')} />
           </SelectTrigger>
           <SelectContent>
@@ -429,7 +439,7 @@ function FlatsPageContent() {
           </SelectContent>
         </Select>
         <Select value={floorFilter} onValueChange={setFloorFilter}>
-          <SelectTrigger className="w-auto min-w-[7.5rem] flex-1 sm:w-[160px] sm:flex-none">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder={t('floorPlaceholder')} />
           </SelectTrigger>
           <SelectContent>

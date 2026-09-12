@@ -1,12 +1,18 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Layout } from '@/components/layout/Layout'
-import { getLoginPhone, getStoredRole, isAdminSession, isLoggedIn } from '@/utils/auth'
-import { fetchRenters } from '@/lib/api/buildings'
+import { fetchCurrentUser } from '@/lib/api/auth'
+import {
+  getDisplayName,
+  getLoginPhone,
+  getStoredRole,
+  isAdminSession,
+  isLoggedIn,
+  syncUserDisplay,
+} from '@/utils/auth'
 import { getCurrentAccountUserId } from '@/lib/api/account'
-import { useMockQuery } from '@/hooks/useMockQuery'
 import { RenterDashboard } from '@/components/dashboard/RenterDashboard'
 import { OwnerDashboard } from '@/components/dashboard/OwnerDashboard'
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard'
@@ -16,18 +22,15 @@ import type { UserRole } from '@/types'
 export default function DashboardPage() {
   const router = useRouter()
   const [role, setRole] = useState<UserRole>('renter')
-  const [name, setName] = useState('Rahim')
-  const [phone, setPhone] = useState('+8801712345678')
-  const [email, setEmail] = useState('rahim@example.com')
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
 
   const [city, setCity] = useState('Dhaka')
   const [area, setArea] = useState('Mirpur')
   const [search, setSearch] = useState('')
 
   const currentUserId = getCurrentAccountUserId()
-  const loadRenters = useCallback(() => fetchRenters(), [])
-  const { data: renters } = useMockQuery(loadRenters)
-  const currentRenter = renters?.find(r => r.id === currentUserId)
 
   useEffect(() => {
     if (!isLoggedIn()) {
@@ -47,17 +50,26 @@ export default function DashboardPage() {
     if (storedRole) setRole(storedRole)
 
     const storedPhone = getLoginPhone()
-    if (storedPhone) {
-      setPhone(storedPhone)
-      setName('User ' + storedPhone.slice(-4))
+    if (storedPhone) setPhone(storedPhone)
+    const storedName = getDisplayName()
+    if (storedName && storedName !== 'Guest' && !storedName.startsWith('User ')) {
+      setName(storedName)
     }
 
-    if (currentRenter) {
-      setName(currentRenter.name)
-      setPhone(currentRenter.phone)
-      if (currentRenter.email) setEmail(currentRenter.email)
+    let cancelled = false
+    void fetchCurrentUser().then(result => {
+      if (cancelled || !result.ok) return
+      syncUserDisplay(result.data)
+      if (result.data.name.trim()) setName(result.data.name.trim())
+      const accountPhone = result.data.phoneDigits || result.data.phone
+      if (accountPhone) setPhone(accountPhone)
+      if (result.data.email) setEmail(result.data.email)
+    })
+
+    return () => {
+      cancelled = true
     }
-  }, [router, currentRenter])
+  }, [router])
 
   const areasByCity: Record<string, string[]> = useMemo(
     () => ({

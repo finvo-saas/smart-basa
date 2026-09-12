@@ -10,6 +10,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  ownerSheetClass,
 } from '@/components/ui/dialog'
 import {
   Form,
@@ -23,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import type { Building } from '@/types/building'
+import { cn } from '@/lib/utils'
 import { createBuilding, patchBuilding } from '@/lib/api/buildings'
 
 const buildingSchema = z.object({
@@ -113,8 +115,8 @@ export function AddBuildingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className={cn(ownerSheetClass('sm:max-w-lg'), 'gap-4 overflow-y-auto p-4 sm:p-6')}>
+        <DialogHeader className="pr-8 text-left">
           <DialogTitle>{isEdit ? 'Edit Building' : 'Add New Building'}</DialogTitle>
           <DialogDescription>
             {isEdit

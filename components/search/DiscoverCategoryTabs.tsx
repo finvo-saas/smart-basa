@@ -29,7 +29,7 @@ export function DiscoverCategoryTabs({
     <div
       role="tablist"
       aria-label="Search category"
-      className="flex gap-2 overflow-x-auto pb-1"
+      className="flex w-full min-w-0 flex-wrap gap-2"
     >
       {TABS.map(tab => {
         const Icon = tab.icon

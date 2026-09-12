@@ -33,13 +33,22 @@
     "title": "Estimated monthly living cost",
     "total": "Total",
     "rent": "Rent",
+    "serviceCharge": "Service charge",
     "electricity": "Electricity",
     "gas": "Gas",
     "internet": "Internet",
     "water": "Water",
     "transport": "Transport",
     "meals": "Meals",
-    "note": "Estimates for typical Bangladesh household usage. Actual bills vary."
+    "note": "Owner estimates. Actual bills vary.",
+    "billsTitle": "Monthly utility estimates",
+    "billsOptional": "Leave blank if you do not know yet. Blank lines are hidden from renters.",
+    "billsMessHint": "House total for one month. Renters see each amount divided by total seats.",
+    "billsFlatHint": "This flat only. It is not split across the building.",
+    "electricityBill": "Electricity (৳/mo)",
+    "gasBill": "Gas (৳/mo)",
+    "internetBill": "Internet (৳/mo)",
+    "waterBill": "Water (৳/mo)"
   },
   "poi": {
     "title": "Around this place",
@@ -119,6 +128,27 @@
   },
   "seats": {
     "open": "{count, plural, one {# seat open} other {# seats open}}"
+  },
+  "glance": {
+    "seatsOpen": "seats open",
+    "ofTotal": "of {total}",
+    "full": "Full",
+    "noSeats": "no seats right now",
+    "perMonth": "per month",
+    "whoStays": "who can stay",
+    "meals": "meals",
+    "mealsADay": "meals a day",
+    "mealsYes": "Included",
+    "mealsNo": "Not included",
+    "status": "status",
+    "availableNow": "Available",
+    "notAvailable": "Taken",
+    "bedrooms": "bedrooms",
+    "size": "size",
+    "deposit": "deposit",
+    "genderMale": "Male",
+    "genderFemale": "Female",
+    "genderMixed": "Mixed"
   },
   "tour": {
     "title": "360° virtual tour",

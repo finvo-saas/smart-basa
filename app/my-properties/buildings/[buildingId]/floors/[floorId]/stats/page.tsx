@@ -75,22 +75,22 @@ export default function FloorStatsPage() {
 
   return (
     <Layout userRole="owner">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
-        <div className="mb-6">
+      <div className="container mx-auto max-w-7xl px-3 py-5 sm:px-4 sm:py-6">
+        <div className="mb-6 min-w-0">
           <Button
             variant="ghost"
             onClick={() =>
               router.push(`/my-properties/buildings/${buildingId}/floors`)
             }
-            className="mb-4"
+            className="mb-4 -ml-2 h-auto whitespace-normal"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4 shrink-0" />
             {t('backToFloors')}
           </Button>
-          <h1 className="text-2xl font-bold">
+          <h1 className="break-words text-xl font-bold sm:text-2xl">
             {t('statistics', { name: floorName })}
           </h1>
-          <p className="text-muted-foreground mt-1">{building.name}</p>
+          <p className="mt-1 break-words text-muted-foreground">{building.name}</p>
         </div>
 
         <FloorStats stats={stats} floorName={floorName} />

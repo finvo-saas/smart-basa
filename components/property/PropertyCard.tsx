@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Phone, MapPin, Video, MessageCircle, GitCompareArrows, Check } from 'lucide-react'
+import { WhatsAppButton } from '@/components/contact/WhatsAppButton'
 import { VerificationBadge } from '@/components/property/VerificationBadge'
 import { FavoriteButton } from '@/components/favorites/FavoriteButton'
 import { RatingDisplay } from '@/components/hotel/RatingDisplay'
@@ -20,7 +21,21 @@ import type { Property } from '@/types/property'
 import Image from 'next/image'
 import { formatCurrency } from '@/lib/format/locale'
 import { cn } from '@/lib/utils'
-import { listingPath } from '@/lib/seo/slug'
+import { listingPath, messPath } from '@/lib/seo/slug'
+
+function propertyDetailPath(property: Property): string {
+  if (
+    (property.type === 'mess' || property.type === 'hostel') &&
+    property.messId
+  ) {
+    return messPath({
+      id: property.messId,
+      name: property.name,
+      city: property.city,
+    })
+  }
+  return listingPath(property)
+}
 
 interface PropertyCardProps {
   property: Property
@@ -50,7 +65,7 @@ export function PropertyCard({
   return (
     <Card className="group overflow-hidden border-border/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
       <div className="relative h-48 w-full overflow-hidden bg-muted sm:h-56">
-        <Link href={listingPath(property)} className="absolute inset-0 z-0">
+        <Link href={propertyDetailPath(property)} className="absolute inset-0 z-0">
           <span className="sr-only">View {property.name}</span>
         </Link>
         {!imageError && property.images[0] ? (
@@ -148,7 +163,7 @@ export function PropertyCard({
       <CardContent className="p-4 sm:p-5">
         <div className="mb-3">
           <Link
-            href={listingPath(property)}
+            href={propertyDetailPath(property)}
             className="text-lg font-semibold leading-tight hover:text-primary sm:text-xl"
           >
             <span className="line-clamp-2">{property.name}</span>
@@ -212,35 +227,46 @@ export function PropertyCard({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2">
-          <Button
-            variant="outline"
-            className="w-full text-sm font-medium sm:min-w-0 sm:flex-1"
-            onClick={() => onViewDetails(property)}
-          >
-            Quick view
-          </Button>
-          <Button
-            className="w-full text-sm font-medium sm:min-w-0 sm:flex-1"
-            onClick={() => onCall(property.ownerPhone)}
-          >
-            <Phone className="mr-1.5 h-4 w-4 shrink-0" />
-            Call
-          </Button>
-          <FavoriteButton
-            property={property}
-            size="icon"
-            className="h-10 w-full sm:w-10 sm:min-w-[2.5rem] sm:shrink-0"
-          />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleStartChat}
-            title="Start Chat"
-            className="h-10 w-full sm:w-10 sm:min-w-[2.5rem] sm:shrink-0"
-          >
-            <MessageCircle className="h-4 w-4" />
-          </Button>
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="grid min-w-0 grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              className="h-10 w-full min-w-0 overflow-hidden px-2 text-sm font-medium"
+              onClick={() => onViewDetails(property)}
+            >
+              <span className="truncate">Quick view</span>
+            </Button>
+            <Button
+              className="h-10 w-full min-w-0 overflow-hidden px-2 text-sm font-medium"
+              onClick={() => onCall(property.ownerPhone)}
+            >
+              <Phone className="h-4 w-4 shrink-0" />
+              <span className="truncate">Call</span>
+            </Button>
+          </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <WhatsAppButton
+              number={property.ownerWhatsapp}
+              message={`Hi, I found ${property.name} on Smart Living. Is it still available?`}
+              className="h-10 min-w-0 flex-1 overflow-hidden px-2 text-sm font-medium"
+              title="WhatsApp"
+            />
+            <FavoriteButton
+              property={property}
+              size="icon"
+              className="h-10 w-10 shrink-0"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleStartChat}
+              title="Start chat"
+              aria-label="Start chat"
+              className="h-10 w-10 shrink-0"
+            >
+              <MessageCircle className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { Badge } from '@/components/ui/badge'
 import {
   Form,
   FormControl,
@@ -30,33 +30,20 @@ import {
   RichTextEditor,
   plainTextFromHtml,
 } from '@/components/ui/rich-text-editor'
-import { Loader2, CheckCircle2 } from 'lucide-react'
+import { Loader2, CheckCircle2, ImagePlus, Star, Trash2 } from 'lucide-react'
 import type { Property, PropertyListingInput } from '@/types/property'
 import { cn } from '@/lib/utils'
 import { uploadMediaFile } from '@/lib/api/properties'
-
-const NEARBY_OPTIONS = [
-  'Bus Stop',
-  'Metro Station',
-  'Hospital',
-  'University',
-  'Market',
-  'Shopping Mall',
-  'School',
-]
-
-const FACILITY_OPTIONS = [
-  'WiFi',
-  'AC',
-  'Generator',
-  'Security',
-  'Parking',
-  'Lift',
-  'Balcony',
-  'Common Room',
-  'CCTV',
-  'Water Filter',
-]
+import { fetchAllFlats } from '@/lib/api/buildings'
+import { deleteMediaFile } from '@/lib/api/media'
+import type { Flat } from '@/types/building'
+import { OwnerMediaPicker } from '@/components/media/OwnerMediaPicker'
+import {
+  ListingFacilityPicker,
+  NearbyFacilityPicker,
+} from '@/components/property/ListingFacilityPicker'
+import { UtilityBillFields } from '@/components/property/UtilityBillFields'
+import { validateFile } from '@/lib/security/file-upload'
 
 const schema = z.object({
   name: z.string().min(3, 'Name is required'),
@@ -76,6 +63,7 @@ const schema = z.object({
   mealCost: z.coerce.number().optional(),
   depositMonths: z.coerce.number().min(0).max(6),
   instantBook: z.boolean(),
+  flatId: z.string().optional(),
   parking: z.boolean().optional(),
   security: z.boolean().optional(),
   furnishing: z
@@ -104,6 +92,10 @@ const schema = z.object({
     .optional()
     .nullable(),
   serviceCharge: z.coerce.number().min(0).optional().nullable(),
+  electricityBill: z.number().min(0).nullable().optional(),
+  gasBill: z.number().min(0).nullable().optional(),
+  internetBill: z.number().min(0).nullable().optional(),
+  waterBill: z.number().min(0).nullable().optional(),
   parkingCount: z.coerce.number().min(0).max(20).optional().nullable(),
   availableFrom: z.string().optional().nullable(),
   rentNegotiable: z.boolean().optional(),
@@ -121,6 +113,14 @@ type FormValues = z.infer<typeof schema>
 
 const STEPS = ['Basics', 'Details', 'Photos & publish']
 
+function selectableFlats(flats: Flat[], listingId?: string) {
+  return flats.filter(
+    flat =>
+      flat.listingId === listingId ||
+      (flat.status === 'available' && !flat.listingId),
+  )
+}
+
 interface PublishListingWizardProps {
   initial?: Property
   onSubmit: (input: PropertyListingInput) => Promise<void>
@@ -135,8 +135,12 @@ export function PublishListingWizard({
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [images, setImages] = useState<string[]>(initial?.images || [])
   const [videoFile, setVideoFile] = useState<File | null>(null)
+  const [flats, setFlats] = useState<Flat[]>([])
+  const coverInputRef = useRef<HTMLInputElement>(null)
+  const moreInputRef = useRef<HTMLInputElement>(null)
 
   const form = useForm<FormValues>({
     // Zod v4 + RHF resolver typings are loose project-wide
@@ -155,6 +159,7 @@ export function PublishListingWizard({
       mealCost: initial?.mealCost || undefined,
       depositMonths: initial?.depositMonths ?? 1,
       instantBook: initial?.instantBook || false,
+      flatId: initial?.linkedFlatId || '',
       parking: initial?.parking || false,
       security: initial?.security ?? true,
       furnishing: initial?.furnishing || null,
@@ -168,6 +173,10 @@ export function PublishListingWizard({
       unitNumber: initial?.unitNumber || '',
       propertyFace: initial?.propertyFace || null,
       serviceCharge: initial?.serviceCharge ?? undefined,
+      electricityBill: initial?.electricityBill ?? null,
+      gasBill: initial?.gasBill ?? null,
+      internetBill: initial?.internetBill ?? null,
+      waterBill: initial?.waterBill ?? null,
       parkingCount: initial?.parkingCount ?? undefined,
       availableFrom: initial?.availableFrom || '',
       rentNegotiable: initial?.rentNegotiable || false,
@@ -179,25 +188,73 @@ export function PublishListingWizard({
     },
   })
 
+  useEffect(() => {
+    void fetchAllFlats().then(result => {
+      if (!result.ok) return
+      setFlats(result.data)
+      const linkedId = initial?.linkedFlatId
+      if (!linkedId) return
+      const current = form.getValues('flatId')
+      if (!current) form.setValue('flatId', linkedId)
+    })
+  }, [form, initial?.linkedFlatId])
+
   const propertyType = form.watch('type')
   const facilities = form.watch('facilities')
-
   const nearbyFacilities = form.watch('nearbyFacilities')
 
-  const toggleFacility = (f: string) => {
-    const current = form.getValues('facilities')
-    form.setValue(
-      'facilities',
-      current.includes(f) ? current.filter(x => x !== f) : [...current, f]
-    )
+  const uploadFiles = async (files: FileList | null, mode: 'cover' | 'append') => {
+    if (!files?.length) return
+    setUploading(true)
+    setError(null)
+    try {
+      const uploadedUrls: string[] = []
+      for (const file of Array.from(files)) {
+        const check = validateFile(file, 'image')
+        if (!check.valid) {
+          setError(
+            check.errorKey === 'fileTooLarge'
+              ? `Image is too large (max ${check.errorParams?.max || '5 MB'}).`
+              : 'Use JPG, PNG, WebP, or GIF images.',
+          )
+          return
+        }
+        const result = await uploadMediaFile(file, 'property')
+        if (!result.ok) {
+          setError(result.error)
+          return
+        }
+        uploadedUrls.push(result.data.url)
+      }
+      setImages(prev => {
+        if (mode === 'cover') {
+          const rest = prev.filter(url => !uploadedUrls.includes(url))
+          return [...uploadedUrls, ...rest]
+        }
+        const merged = [...prev]
+        for (const url of uploadedUrls) {
+          if (!merged.includes(url)) merged.push(url)
+        }
+        return merged
+      })
+    } finally {
+      setUploading(false)
+      if (coverInputRef.current) coverInputRef.current.value = ''
+      if (moreInputRef.current) moreInputRef.current.value = ''
+    }
   }
 
-  const toggleNearby = (f: string) => {
-    const current = form.getValues('nearbyFacilities')
-    form.setValue(
-      'nearbyFacilities',
-      current.includes(f) ? current.filter(x => x !== f) : [...current, f]
-    )
+  const removeImage = async (url: string) => {
+    setError(null)
+    let deleted = await deleteMediaFile({ url, kind: 'property' })
+    if (!deleted.ok) {
+      deleted = await deleteMediaFile({ url })
+    }
+    setImages(prev => prev.filter(item => item !== url))
+  }
+
+  const setAsCover = (url: string) => {
+    setImages(prev => [url, ...prev.filter(item => item !== url)])
   }
 
   const validateStep = async () => {
@@ -207,13 +264,8 @@ export function PublishListingWizard({
     if (step === 1) {
       return form.trigger(['description', 'depositMonths'])
     }
-    const url = form.getValues('imageUrl')
-    if (imageFile || (url && url.length > 8) || (initial?.images?.length ?? 0) > 0) {
-      return true
-    }
-    form.setError('imageUrl', {
-      message: 'Upload a cover photo or paste an image URL',
-    })
+    if (images.length > 0) return true
+    setError('Upload a cover photo or choose one from your photos.')
     return false
   }
 
@@ -226,21 +278,19 @@ export function PublishListingWizard({
     setSubmitting(true)
     setError(null)
     try {
-      let images = values.imageUrl ? [values.imageUrl] : [...(initial?.images || [])]
+      let gallery = [...images]
       let videos = [...(initial?.videos || [])]
 
-      if (imageFile) {
-        const uploaded = await uploadMediaFile(imageFile, 'property')
-        if (!uploaded.ok) throw new Error(uploaded.error)
-        images = [uploaded.data.url, ...images.filter(url => url !== uploaded.data.url)]
-      }
       if (videoFile) {
         const uploaded = await uploadMediaFile(videoFile, 'property_video')
         if (!uploaded.ok) throw new Error(uploaded.error)
         videos = [...videos.filter(url => url !== uploaded.data.url), uploaded.data.url]
       }
-      if (!images.length) {
-        throw new Error('Add a cover photo (upload a file or paste a URL)')
+      if (values.type === 'apartment' && values.publishNow && !values.flatId) {
+        throw new Error('Choose a vacant flat from My properties before publishing.')
+      }
+      if (!gallery.length) {
+        throw new Error('Add a cover photo (upload a file or choose from your photos)')
       }
 
       const input: PropertyListingInput = {
@@ -279,6 +329,12 @@ export function PublishListingWizard({
           values.type === 'apartment' ? values.propertyFace || null : null,
         serviceCharge:
           values.type === 'apartment' ? values.serviceCharge ?? null : null,
+        electricityBill:
+          values.type === 'apartment' ? values.electricityBill ?? null : undefined,
+        gasBill: values.type === 'apartment' ? values.gasBill ?? null : undefined,
+        internetBill:
+          values.type === 'apartment' ? values.internetBill ?? null : undefined,
+        waterBill: values.type === 'apartment' ? values.waterBill ?? null : undefined,
         parkingCount:
           values.type === 'apartment' ? values.parkingCount ?? null : null,
         availableFrom:
@@ -289,12 +345,13 @@ export function PublishListingWizard({
           values.type === 'apartment' ? !!values.rentNegotiable : false,
         tenantType:
           values.type === 'apartment' ? values.tenantType || 'any' : null,
-        images,
+        images: gallery,
         videos,
         nearbyFacilities: values.nearbyFacilities,
         facilities: values.facilities,
         published: values.publishNow,
         listingStatus: values.publishNow ? 'published' : 'draft',
+        flatId: values.type === 'apartment' ? values.flatId || null : null,
       }
       await onSubmit(input)
     } catch (e) {
@@ -459,8 +516,9 @@ export function PublishListingWizard({
                           />
                         </FormControl>
                         <FormDescription>
-                          Use the toolbar for headings, bold, and lists — shown
-                          on the public listing page.
+                          {plainTextFromHtml(field.value || '').length >= 80
+                            ? 'Long enough to count toward the trust score.'
+                            : `${plainTextFromHtml(field.value || '').length}/80 characters. A fuller description raises the trust score.`}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -697,6 +755,57 @@ export function PublishListingWizard({
                           )}
                         />
                       </div>
+                      <FormField
+                        control={form.control}
+                        name="flatId"
+                        render={({ field }) => {
+                          const choices = selectableFlats(flats, initial?.id)
+                          return (
+                          <FormItem className="sm:col-span-2">
+                            <FormLabel>Flat in My properties</FormLabel>
+                            <Select
+                              value={field.value || undefined}
+                              onValueChange={value => {
+                                field.onChange(value)
+                                const flat = flats.find(item => item.id === value)
+                                if (!flat) return
+                                form.setValue('unitNumber', flat.flatNumber)
+                                form.setValue('floorLevel', flat.floor)
+                                if (flat.bedrooms != null) form.setValue('bedrooms', flat.bedrooms)
+                                if (flat.bathrooms != null) form.setValue('bathrooms', flat.bathrooms)
+                                if (flat.area != null) form.setValue('sizeSqft', flat.area)
+                                if (flat.rent) form.setValue('rent', flat.rent)
+                              }}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Choose the vacant flat this listing is for" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {choices.map(flat => (
+                                    <SelectItem key={flat.id} value={flat.id}>
+                                      Flat {flat.flatNumber} · floor {flat.floor}
+                                      {flat.listingId === initial?.id
+                                        ? ' · this listing'
+                                        : ''}
+                                      {flat.status !== 'available'
+                                        ? ` · ${flat.status}`
+                                        : ''}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              {choices.length
+                                ? 'Publish attaches this listing to that flat. Booking occupies it. The flat already linked here stays selected.'
+                                : 'No vacant flat is free. Add one in My properties, or vacate a flat, then come back and choose it.'}
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                          )
+                        }}
+                      />
                       <div className="grid gap-4 sm:grid-cols-2">
                         <FormField
                           control={form.control}
@@ -873,6 +982,7 @@ export function PublishListingWizard({
                           </FormItem>
                         )}
                       />
+                      <UtilityBillFields control={form.control} variant="flat" />
                     </>
                   )}
 
@@ -923,43 +1033,15 @@ export function PublishListingWizard({
                     />
                   </div>
 
-                  <div>
-                    <Label className="mb-2 block">Facilities</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {FACILITY_OPTIONS.map(f => (
-                        <Badge
-                          key={f}
-                          variant={
-                            facilities.includes(f) ? 'default' : 'outline'
-                          }
-                          className="cursor-pointer"
-                          onClick={() => toggleFacility(f)}
-                        >
-                          {f}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
+                  <ListingFacilityPicker
+                    value={facilities}
+                    onChange={next => form.setValue('facilities', next)}
+                  />
 
-                  <div>
-                    <Label className="mb-2 block">
-                      Nearby (bus, metro, hospital…)
-                    </Label>
-                    <div className="flex flex-wrap gap-2">
-                      {NEARBY_OPTIONS.map(f => (
-                        <Badge
-                          key={f}
-                          variant={
-                            nearbyFacilities?.includes(f) ? 'default' : 'outline'
-                          }
-                          className="cursor-pointer"
-                          onClick={() => toggleNearby(f)}
-                        >
-                          {f}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
+                  <NearbyFacilityPicker
+                    value={nearbyFacilities || []}
+                    onChange={next => form.setValue('nearbyFacilities', next)}
+                  />
 
                   <FormField
                     control={form.control}
@@ -986,36 +1068,110 @@ export function PublishListingWizard({
 
               {step === 2 && (
                 <>
-                  <FormField
-                    control={form.control}
-                    name="imageUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cover photo</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={e =>
-                              setImageFile(e.target.files?.[0] ?? null)
-                            }
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          {imageFile
-                            ? imageFile.name
-                            : 'Upload a JPEG/PNG (max 5 MB), or paste a URL below.'}
-                        </FormDescription>
-                        <FormControl>
-                          <Input
-                            placeholder="https://… (optional if you uploaded a file)"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="mb-1 block">Photos</Label>
+                      <p className="mb-2 text-xs text-muted-foreground">
+                        Add at least 3 photos to raise the trust score. First
+                        photo is the cover. Uploads go to DigitalOcean Spaces.
+                      </p>
+                    </div>
+                    <input
+                      ref={coverInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      onChange={e => uploadFiles(e.target.files, 'cover')}
+                    />
+                    <input
+                      ref={moreInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      multiple
+                      className="hidden"
+                      onChange={e => uploadFiles(e.target.files, 'append')}
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploading || submitting}
+                        onClick={() => coverInputRef.current?.click()}
+                      >
+                        <ImagePlus className="mr-1.5 h-4 w-4" />
+                        {images.length ? 'Replace cover' : 'Upload cover'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploading || submitting}
+                        onClick={() => moreInputRef.current?.click()}
+                      >
+                        <ImagePlus className="mr-1.5 h-4 w-4" />
+                        Add photos
+                      </Button>
+                      {uploading ? (
+                        <span className="self-center text-xs text-muted-foreground">
+                          Uploading…
+                        </span>
+                      ) : null}
+                    </div>
+                    <OwnerMediaPicker
+                      selected={images}
+                      onSelect={asset => {
+                        setImages(prev =>
+                          prev.includes(asset.url) ? prev : [...prev, asset.url],
+                        )
+                      }}
+                    />
+                    {images.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {images.map((url, index) => (
+                          <div
+                            key={url}
+                            className="group relative aspect-[4/3] overflow-hidden rounded-md border bg-muted"
+                          >
+                            <Image
+                              src={url}
+                              alt={index === 0 ? 'Cover photo' : `Photo ${index + 1}`}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                            {index === 0 ? (
+                              <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                                Cover
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="absolute left-1.5 top-1.5 rounded bg-black/60 p-1 text-white opacity-0 transition group-hover:opacity-100"
+                                title="Set as cover"
+                                onClick={() => setAsCover(url)}
+                              >
+                                <Star className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="absolute right-1.5 top-1.5 rounded bg-destructive/90 p-1 text-destructive-foreground"
+                              title="Remove from Spaces"
+                              onClick={() => removeImage(url)}
+                              disabled={uploading || submitting}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+                        No photos yet. Upload a cover or choose from your photos.
+                      </p>
                     )}
-                  />
+                  </div>
                   <div className="space-y-2">
                     <Label>Video walkthrough (optional)</Label>
                     <Input

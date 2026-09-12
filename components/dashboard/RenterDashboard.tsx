@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,7 @@ import {
   BarChart3,
   FolderOpen,
   ChevronRight,
+  X,
 } from 'lucide-react'
 import { fetchMyTenancies } from '@/lib/api/buildings'
 import { fetchBillsForTenant } from '@/lib/api/bills'
@@ -32,6 +33,8 @@ import { useMessStudentSelf } from '@/hooks/useMessStudentSelf'
 import { useAppFormat } from '@/hooks/useAppFormat'
 import { ok } from '@/lib/api/http'
 import { cn } from '@/lib/utils'
+
+const WELCOME_DISMISS_KEY = 'sl_renter_welcome_dismissed'
 
 interface RenterDashboardProps {
   renterId: string
@@ -80,7 +83,19 @@ export function RenterDashboard({
     })
   }, [renterId])
 
-  const { data: dashboardData } = useMockQuery(loadDashboard)
+  const { data: dashboardData, loading: dashboardLoading } = useMockQuery(loadDashboard)
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false)
+  const [welcomeReady, setWelcomeReady] = useState(false)
+
+  useEffect(() => {
+    setWelcomeDismissed(sessionStorage.getItem(WELCOME_DISMISS_KEY) === '1')
+    setWelcomeReady(true)
+  }, [])
+
+  const dismissWelcome = useCallback(() => {
+    sessionStorage.setItem(WELCOME_DISMISS_KEY, '1')
+    setWelcomeDismissed(true)
+  }, [])
 
   const activeTenancy = dashboardData?.tenancies?.[0] ?? null
   const renterBills = useMemo(
@@ -129,8 +144,14 @@ export function RenterDashboard({
     }
   }, [homeBills])
 
-  const firstName = name.trim().split(/\s+/)[0] || name
-  const initials = name
+  const showWelcome =
+    welcomeReady &&
+    !welcomeDismissed &&
+    !dashboardLoading &&
+    profileCompletion < 100
+
+  const displayName = name.trim()
+  const initials = displayName
     .split(/\s+/)
     .map(n => n[0])
     .join('')
@@ -211,44 +232,63 @@ export function RenterDashboard({
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 pb-4 md:space-y-7">
-      {/* Greeting — first viewport focus */}
-      <header className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-100 via-teal-50/80 to-white p-4 dark:border-slate-800 dark:from-slate-900 dark:via-teal-950/30 dark:to-background sm:p-5">
-        <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-teal-200/30 blur-2xl dark:bg-teal-700/20" />
-        <div className="relative flex items-start gap-3">
-          <Avatar className="h-12 w-12 border border-white/70 shadow-sm dark:border-slate-700 sm:h-14 sm:w-14">
-            <AvatarFallback className="bg-teal-700 text-sm font-semibold text-white">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground sm:text-sm">
+      {showWelcome ? (
+        <header className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-100 via-teal-50/80 to-white p-4 dark:border-slate-800 dark:from-slate-900 dark:via-teal-950/30 dark:to-background sm:p-5">
+          <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-teal-200/30 blur-2xl dark:bg-teal-700/20" />
+          <div className="relative flex items-center justify-between gap-2">
+            <p className="whitespace-nowrap text-sm text-muted-foreground">
               {t('greeting')}
             </p>
-            <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">
-              {firstName}
-            </h1>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {phone}
-              {email ? ` · ${email}` : ''}
-            </p>
-            {profileCompletion > 0 && profileCompletion < 100 ? (
-              <div className="mt-3 max-w-xs space-y-1">
-                <div className="flex justify-between text-[11px] text-muted-foreground">
-                  <span>{t('profileCompletion')}</span>
-                  <span>{profileCompletion}%</span>
-                </div>
-                <Progress value={profileCompletion} className="h-1.5" />
-              </div>
-            ) : null}
+            <div className="flex shrink-0 items-center gap-1">
+              <Button asChild variant="outline" size="sm">
+                <Link href="/profile">
+                  <User className="mr-1.5 h-4 w-4" />
+                  {t('profile')}
+                </Link>
+              </Button>
+              <button
+                type="button"
+                onClick={dismissWelcome}
+                aria-label={t('dismissWelcome')}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-white/80 hover:text-foreground dark:hover:bg-slate-800"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-          <Button asChild variant="outline" size="sm" className="shrink-0">
-            <Link href="/profile">
-              <User className="mr-1.5 h-4 w-4" />
-              {t('profile')}
-            </Link>
-          </Button>
-        </div>
-      </header>
+          <div className="relative mt-3 flex items-start gap-3">
+            <Avatar className="h-12 w-12 shrink-0 border border-white/70 shadow-sm dark:border-slate-700 sm:h-14 sm:w-14">
+              <AvatarFallback className="bg-teal-700 text-sm font-semibold text-white">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <h1 className="break-words text-xl font-bold leading-tight tracking-tight sm:text-2xl">
+                {displayName}
+              </h1>
+              {phone ? (
+                <p className="mt-1 break-all text-sm text-muted-foreground">
+                  {phone}
+                </p>
+              ) : null}
+              {email ? (
+                <p className="mt-0.5 break-all text-xs text-muted-foreground">
+                  {email}
+                </p>
+              ) : null}
+              {profileCompletion > 0 ? (
+                <div className="mt-3 max-w-xs space-y-1">
+                  <div className="flex justify-between text-[11px] text-muted-foreground">
+                    <span>{t('profileCompletion')}</span>
+                    <span>{profileCompletion}%</span>
+                  </div>
+                  <Progress value={profileCompletion} className="h-1.5" />
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </header>
+      ) : null}
 
       {/* Attention banner */}
       {dueAmount > 0 ? (
@@ -330,7 +370,7 @@ export function RenterDashboard({
             </Link>
           </Button>
           <Button asChild variant="outline" className="w-full sm:w-auto">
-            <Link href="/search?type=mess">{t('browseMess')}</Link>
+            <Link href="/messes">{t('browseMess')}</Link>
           </Button>
         </div>
         {/* Keep city/area controls accessible but secondary */}

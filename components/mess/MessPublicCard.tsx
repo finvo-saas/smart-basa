@@ -1,18 +1,21 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import Image from 'next/image'
 import Link from 'next/link'
 import { WhatsAppButton } from '@/components/contact/WhatsAppButton'
+import { FavoriteButton } from '@/components/favorites/FavoriteButton'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Phone, Users } from 'lucide-react'
+import { MapPin, MessageCircle, Phone, Users } from 'lucide-react'
 import { formatCurrency } from '@/lib/format/locale'
 import { messPath } from '@/lib/seo/slug'
 import { FreshnessBadge } from '@/components/discover/FreshnessBadge'
 import type { Mess } from '@/types/mess'
+import type { Property } from '@/types/property'
 
 interface MessPublicCardProps {
   mess: Mess
@@ -20,8 +23,10 @@ interface MessPublicCardProps {
 
 export function MessPublicCard({ mess }: MessPublicCardProps) {
   const [imageError, setImageError] = useState(false)
+  const router = useRouter()
   const tContact = useTranslations('contact')
   const hasSeats = mess.availableSeats > 0
+  const listingId = mess.listingId || ''
 
   return (
     <Card className="group overflow-hidden border-border/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
@@ -114,28 +119,56 @@ export function MessPublicCard({ mess }: MessPublicCardProps) {
           </div>
         )}
 
-        <div className="mt-4 grid grid-cols-2 gap-2 min-[360px]:flex min-[360px]:flex-wrap">
-          <Button variant="outline" className="min-w-0 flex-1" asChild>
-            <Link href={messPath(mess)} className="truncate">
-              View details
-            </Link>
-          </Button>
-          <Button className="min-w-0 flex-1" asChild>
-            <a href={`tel:${mess.ownerPhone}`} className="truncate">
-              <Phone className="mr-1.5 h-4 w-4 shrink-0" />
-              Call
-            </a>
-          </Button>
-          <WhatsAppButton
-            size="icon"
-            className="col-span-2 w-full min-[360px]:col-span-1 min-[360px]:w-auto"
-            number={mess.ownerWhatsapp}
-            message={tContact('messageOwner', {
-              property: mess.name?.trim() || tContact('propertyFallback'),
-            })}
-            label=""
-            aria-label={tContact('whatsapp')}
-          />
+        <div className="mt-4 flex min-w-0 flex-col gap-2">
+          <div className="grid min-w-0 grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              className="h-10 w-full min-w-0 overflow-hidden px-2 text-sm font-medium"
+              asChild
+            >
+              <Link href={messPath(mess)}>
+                <span className="truncate">View details</span>
+              </Link>
+            </Button>
+            <Button
+              className="h-10 w-full min-w-0 overflow-hidden px-2 text-sm font-medium"
+              asChild
+            >
+              <a href={`tel:${mess.ownerPhone}`}>
+                <Phone className="h-4 w-4 shrink-0" />
+                <span className="truncate">Call</span>
+              </a>
+            </Button>
+          </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <WhatsAppButton
+              number={mess.ownerWhatsapp}
+              message={tContact('messageOwner', {
+                property: mess.name?.trim() || tContact('propertyFallback'),
+              })}
+              className="h-10 min-w-0 flex-1 overflow-hidden px-2 text-sm font-medium"
+              title={tContact('whatsapp')}
+            />
+            {listingId ? (
+              <FavoriteButton
+                property={{ id: listingId } as Property}
+                size="icon"
+                className="h-10 w-10 shrink-0"
+              />
+            ) : null}
+            {listingId ? (
+              <Button
+                variant="outline"
+                size="icon"
+                title="Start chat"
+                aria-label="Start chat"
+                className="h-10 w-10 shrink-0"
+                onClick={() => router.push(`/messages?propertyId=${listingId}`)}
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
+            ) : null}
+          </div>
         </div>
       </CardContent>
     </Card>

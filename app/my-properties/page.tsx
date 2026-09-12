@@ -102,7 +102,7 @@ export default function MyPropertiesPage() {
           title={t('title')}
           description={t('description')}
           actions={
-            <Button onClick={tryAddBuilding}>
+            <Button className="w-full sm:w-auto" onClick={tryAddBuilding}>
               <Plus className="mr-2 h-4 w-4" />
               {t('addBuilding')}
             </Button>
@@ -115,32 +115,32 @@ export default function MyPropertiesPage() {
           </div>
         )}
 
-        <div className="mb-6 flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" asChild>
+        <div className="mb-6 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:flex sm:flex-wrap">
+          <Button variant="outline" size="sm" className="h-auto w-full whitespace-normal" asChild>
             <Link href="/subscription">{t('subscription')}</Link>
           </Button>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className="h-auto w-full whitespace-normal" asChild>
             <Link href="/bills">
               <Receipt className="mr-2 h-4 w-4" />
               {t('bills')}
             </Link>
           </Button>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className="h-auto w-full whitespace-normal" asChild>
             <Link href="/notices">
               <FileText className="mr-2 h-4 w-4" />
               {t('notices')}
             </Link>
           </Button>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className="h-auto w-full whitespace-normal" asChild>
             <Link href="/complaints">
               <MessageSquare className="mr-2 h-4 w-4" />
               {t('complaints')}
             </Link>
           </Button>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className="h-auto w-full whitespace-normal" asChild>
             <Link href="/my-properties/bookings">{t('bookingRequests')}</Link>
           </Button>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className="h-auto w-full whitespace-normal" asChild>
             <Link href="/my-listings">{t('publicListings')}</Link>
           </Button>
         </div>

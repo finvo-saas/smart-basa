@@ -11,6 +11,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  ownerSheetClass,
 } from '@/components/ui/dialog'
 import {
   Form,
@@ -24,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import type { Flat, Renter } from '@/types/building'
+import { cn } from '@/lib/utils'
 
 const schema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -125,8 +127,8 @@ export function AssignRenterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className={cn(ownerSheetClass('sm:max-w-lg'), 'gap-4 overflow-y-auto p-4 sm:p-6')}>
+        <DialogHeader className="pr-8 text-left">
           <DialogTitle>
             {isEdit ? 'Edit renter' : 'Assign renter'}
             {flat ? ` · Flat ${flat.flatNumber}` : ''}
@@ -281,16 +283,16 @@ export function AssignRenterDialog({
                 </FormItem>
               )}
             />
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-col gap-2 pt-2 sm:flex-row">
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="w-full sm:flex-1"
                 onClick={() => onOpenChange(false)}
               >
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1">
+              <Button type="submit" className="w-full sm:flex-1">
                 {isEdit ? 'Save changes' : 'Assign renter'}
               </Button>
             </div>

@@ -330,6 +330,10 @@ export interface Mess {
   totalSeats: number
   availableSeats: number
   monthlyFee: number
+  electricityBill?: number | null
+  gasBill?: number | null
+  internetBill?: number | null
+  waterBill?: number | null
   gender: 'male' | 'female' | 'mixed'
   facilities: string[]
   images: string[]
@@ -350,6 +354,7 @@ export interface Mess {
   bookUrl?: string | null
   mealSystem?: MessMealSystem
   utilities?: MessUtilities
+  livingCost?: import('./living').LivingCost | null
   liveStatus?: {
     status: Record<string, LiveStatusState>
     updatedAt?: string | null

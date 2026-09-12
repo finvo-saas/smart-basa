@@ -53,6 +53,19 @@ const bookingSchema = z.object({
   }),
 })
 
+function toApiDate(value: Date): string {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function startOfToday(): Date {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
 interface BookingFormProps {
   property: Property
   open: boolean
@@ -69,6 +82,7 @@ export function BookingForm({
   onSubmit,
 }: BookingFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const form = useForm<z.infer<typeof bookingSchema>>({
     resolver: zodResolver(bookingSchema),
@@ -84,10 +98,11 @@ export function BookingForm({
 
   const handleSubmit = async (data: z.infer<typeof bookingSchema>) => {
     setIsSubmitting(true)
+    setSubmitError(null)
     try {
       await onSubmit({
-        moveInDate: data.moveInDate.toISOString(),
-        moveOutDate: data.moveOutDate?.toISOString(),
+        moveInDate: toApiDate(data.moveInDate),
+        moveOutDate: data.moveOutDate ? toApiDate(data.moveOutDate) : undefined,
         duration: data.duration,
         message: data.message,
         specialRequests: data.specialRequests,
@@ -96,7 +111,11 @@ export function BookingForm({
       form.reset()
       onOpenChange(false)
     } catch (error) {
-      console.error('Booking submission error:', error)
+      setSubmitError(
+        error instanceof Error && error.message
+          ? error.message
+          : 'Could not complete this booking. Please try again.',
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -212,7 +231,7 @@ export function BookingForm({
                             form.setValue('moveOutDate', undefined)
                           }
                         }}
-                        disabled={date => date < new Date()}
+                        disabled={date => date < startOfToday()}
                         initialFocus
                       />
                     </PopoverContent>
@@ -261,7 +280,7 @@ export function BookingForm({
                         }}
                         disabled={date => {
                           if (!moveInDate) return true
-                          return date < moveInDate
+                          return date <= moveInDate
                         }}
                         initialFocus
                       />
@@ -377,6 +396,12 @@ export function BookingForm({
             />
 
             {/* Actions */}
+            {submitError ? (
+              <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {submitError}
+              </p>
+            ) : null}
+
             <div className="flex gap-2">
               <Button
                 type="button"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Layout } from '@/components/layout/Layout'
@@ -28,6 +28,8 @@ import { useMockQuery } from '@/hooks/useMockQuery'
 import type { SavedSearch } from '@/types/savedSearch'
 import { Search, Bell, BellOff, Plus } from 'lucide-react'
 import { useConfirm } from '@/components/feedback'
+import { finishPendingSavedSearch } from '@/lib/search/pendingSavedSearch'
+import { hasAuthTokens } from '@/utils/auth-tokens'
 
 export default function SavedSearchesPage() {
   const { confirm } = useConfirm()
@@ -44,6 +46,23 @@ export default function SavedSearchesPage() {
   const userId = getCurrentAccountUserId()
   const load = useCallback(() => fetchSavedSearches(userId), [userId])
   const { data: allSearches, loading, refetch } = useMockQuery(load)
+  const [savingPending, setSavingPending] = useState(false)
+  const [pendingError, setPendingError] = useState('')
+
+  useEffect(() => {
+    if (!hasAuthTokens()) return
+    let cancelled = false
+    setSavingPending(true)
+    void finishPendingSavedSearch().then(async result => {
+      if (cancelled) return
+      if (result && !result.ok) setPendingError(result.error)
+      if (result?.ok) await refetch()
+      setSavingPending(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [refetch])
 
   const searchesList = allSearches ?? []
 
@@ -118,7 +137,7 @@ export default function SavedSearchesPage() {
     router.push(`/search?${params.toString()}`)
   }
 
-  if (loading) {
+  if (loading || savingPending) {
     return (
       <Layout>
         <LoadingState label={t('title')} />
@@ -137,6 +156,9 @@ export default function SavedSearchesPage() {
                 {t('description')}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">{t('pushNote')}</p>
+              {pendingError ? (
+                <p className="mt-2 text-sm text-destructive">{pendingError}</p>
+              ) : null}
             </div>
             <Button onClick={() => router.push('/search')}>
               <Plus className="mr-2 h-4 w-4" />

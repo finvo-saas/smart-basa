@@ -194,11 +194,43 @@ export function applyAuthSession(
   notifyAuthSessionChanged()
 }
 
+const AUTH_RETURN_KEY = 'sl_auth_return'
+
+function safeInternalPath(path: string): string | null {
+  const trimmed = path.trim()
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null
+  if (trimmed.startsWith('/login') || trimmed.startsWith('/otp-verify')) return null
+  return trimmed
+}
+
+/** Remember where a guest was going (request a seat, mess book) across login. */
+export function rememberAuthReturn(path: string): void {
+  if (typeof window === 'undefined') return
+  const safe = safeInternalPath(path)
+  if (!safe) return
+  sessionStorage.setItem(AUTH_RETURN_KEY, safe)
+}
+
+export function peekAuthReturn(): string | null {
+  if (typeof window === 'undefined') return null
+  const raw = sessionStorage.getItem(AUTH_RETURN_KEY)
+  return raw ? safeInternalPath(raw) : null
+}
+
+export function consumeAuthReturn(): string | null {
+  if (typeof window === 'undefined') return null
+  const raw = sessionStorage.getItem(AUTH_RETURN_KEY)
+  sessionStorage.removeItem(AUTH_RETURN_KEY)
+  return raw ? safeInternalPath(raw) : null
+}
+
 export function nextPathAfterAuth(session: AuthSession): string {
   if (session.needsPinSetup || isPinResetFlow()) return '/set-pin'
   if (session.needsRoleSelection || !session.user.roleSelected) {
     return '/role-selection'
   }
+  const back = consumeAuthReturn()
+  if (back) return back
   if (session.user.role === 'admin') return '/admin'
   return getDefaultPathForRole(session.user.role)
 }
@@ -261,10 +293,12 @@ export function clearLocalAuthState(): void {
 
 /**
  * Sign out: revoke refresh cookie on the API, then clear local session.
- * Prefer awaiting this before navigating away.
+ * Owners and renters always land on the home page. Admin stays put so the
+ * admin layout can send them to /admin/login.
  */
 export async function logout(): Promise<void> {
   if (typeof window === 'undefined') return
+  const role = getStoredRole()
   setLogoutGuard()
   try {
     const { logoutApi } = await import('@/lib/api/auth')
@@ -274,6 +308,9 @@ export async function logout(): Promise<void> {
   }
   clearLocalAuthState()
   notifyAuthSessionChanged()
+  if (role !== 'admin') {
+    window.location.replace('/')
+  }
 }
 
 export const getStoredAdminRole = (): AdminRole | null => {

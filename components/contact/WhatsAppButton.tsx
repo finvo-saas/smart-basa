@@ -49,8 +49,8 @@ export function WhatsAppButton({
   return (
     <Button variant={variant} className={className} asChild {...props}>
       <a href={href} target="_blank" rel="noopener noreferrer">
-        <WhatsAppIcon className="text-[#25D366]" />
-        {label ?? t('whatsapp')}
+        <WhatsAppIcon className="shrink-0 text-[#25D366]" />
+        <span className="truncate">{label ?? t('whatsapp')}</span>
         {showNumber && number ? (
           <span className="text-muted-foreground">{number}</span>
         ) : null}

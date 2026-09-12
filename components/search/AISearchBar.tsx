@@ -1,13 +1,17 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import { Search, Sparkles, Loader2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
 interface AISearchBarProps {
   onSearch: (query: string) => void
+  /** Sentence currently in the URL, so a refresh keeps the typed search. */
+  queryFromUrl?: string
   loading?: boolean
   parsedQuery?: {
     area: string | null
@@ -20,16 +24,25 @@ interface AISearchBarProps {
   } | null
 }
 
-const EXAMPLE_QUERIES = [
-  'Mohammadpur-এ ১৫,০০০ টাকায় ২ বেডরুম, লিফট থাকতে হবে',
-  'Dhanmondi mess for male students under 8000',
-  'উত্তরায় ফ্যামিলি ফ্ল্যাট ২০,০০০ টাকার মধ্যে',
-  'Apartment in Mirpur with parking and generator',
-  'মেয়েদের মেস গুলশানে WiFi সহ',
-]
+export function AISearchBar({
+  onSearch,
+  queryFromUrl = '',
+  loading,
+  parsedQuery,
+}: AISearchBarProps) {
+  const t = useTranslations('search')
+  const [query, setQuery] = useState(queryFromUrl)
+  const previousUrlQuery = useRef(queryFromUrl)
+  const examples = t.raw('page.ai.examples') as string[]
 
-export function AISearchBar({ onSearch, loading, parsedQuery }: AISearchBarProps) {
-  const [query, setQuery] = useState('')
+  useEffect(() => {
+    if (queryFromUrl) {
+      setQuery(queryFromUrl)
+    } else if (previousUrlQuery.current) {
+      setQuery('')
+    }
+    previousUrlQuery.current = queryFromUrl
+  }, [queryFromUrl])
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -40,43 +53,50 @@ export function AISearchBar({ onSearch, loading, parsedQuery }: AISearchBarProps
   )
 
   return (
-    <div className="space-y-3">
-      <form onSubmit={handleSubmit} className="relative">
-        <div className="relative flex items-center">
-          <Sparkles className="absolute left-3 h-5 w-5 text-primary" />
+    <div className="min-w-0 space-y-3">
+      <form
+        onSubmit={handleSubmit}
+        className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center"
+      >
+        <div className="relative min-w-0 flex-1">
+          <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
           <Input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="বলুন আপনার কেমন বাসা দরকার... / Describe what you need..."
-            className="h-12 pl-10 pr-24 text-base"
+            placeholder={t('page.ai.placeholder')}
+            className={cn(
+              'h-12 w-full min-w-0 pl-10 text-sm sm:text-base',
+              query ? 'pr-10' : 'pr-3',
+            )}
+            aria-label={t('page.ai.placeholder')}
           />
-          {query && (
+          {query ? (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="absolute right-20 text-muted-foreground hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={t('page.ai.clear')}
             >
               <X className="h-4 w-4" />
             </button>
-          )}
-          <Button
-            type="submit"
-            disabled={!query.trim() || loading}
-            className="absolute right-1.5 h-9"
-          >
-            {loading ? (
-              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-            ) : (
-              <Search className="mr-1.5 h-4 w-4" />
-            )}
-            {loading ? 'Matching...' : 'AI Match'}
-          </Button>
+          ) : null}
         </div>
+        <Button
+          type="submit"
+          disabled={!query.trim() || loading}
+          className="h-12 w-full shrink-0 sm:w-auto sm:px-5"
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Search className="h-4 w-4" />
+          )}
+          {loading ? t('page.ai.matching') : t('page.ai.match')}
+        </Button>
       </form>
 
-      {/* Parsed query chips */}
       {parsedQuery && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex min-w-0 flex-wrap gap-1.5">
           {parsedQuery.area && (
             <Badge variant="secondary">📍 {parsedQuery.area}</Badge>
           )}
@@ -105,21 +125,20 @@ export function AISearchBar({ onSearch, loading, parsedQuery }: AISearchBarProps
         </div>
       )}
 
-      {/* Example queries */}
       {!parsedQuery && (
-        <div className="flex flex-wrap gap-2">
-          <span className="text-xs text-muted-foreground">Try:</span>
-          {EXAMPLE_QUERIES.slice(0, 3).map(eq => (
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">{t('page.ai.try')}</span>
+          {examples.map(example => (
             <button
-              key={eq}
+              key={example}
               type="button"
               onClick={() => {
-                setQuery(eq)
-                onSearch(eq)
+                setQuery(example)
+                onSearch(example)
               }}
-              className="rounded-full border border-dashed px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+              className="max-w-full truncate rounded-full border border-dashed px-2.5 py-1 text-left text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
             >
-              {eq.length > 45 ? eq.slice(0, 45) + '…' : eq}
+              {example}
             </button>
           ))}
         </div>

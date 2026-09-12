@@ -13,29 +13,47 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Shield, ArrowLeft } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import {
-  DEMO_ADMIN_PHONES,
-  ADMIN_ROLE_LABELS,
-} from '@/lib/admin/permissions'
 import { applyAuthSession, isAdminSession, hasCompleteSession } from '@/utils/auth'
 import { hasAuthTokens } from '@/utils/auth-tokens'
-import { loginWithPin, requestOtp, selectRole, startLogin, verifyOtp } from '@/lib/api/auth'
+import { loginWithPin, selectRole, startLogin, verifyOtp } from '@/lib/api/auth'
 import type { AuthSession } from '@/lib/api/auth'
 import type { ApiResult } from '@/lib/api/http'
 
-function toE164(digitsOrE164: string): string {
-  const digits = digitsOrE164.replace(/\D/g, '')
-  return digits.startsWith('880') ? `+${digits}` : `+880${digits.replace(/^0/, '')}`
+/** Accept +880…, 880…, 01…, or 1… and return E.164, or null if incomplete/invalid. */
+function normalizeBdPhone(raw: string): string | null {
+  const digits = raw.replace(/\D/g, '')
+  if (
+    digits.startsWith('880') &&
+    (digits.length === 13 || digits.length === 14) &&
+    digits[3] === '1'
+  ) {
+    return `+${digits}`
+  }
+  if (
+    digits.startsWith('0') &&
+    (digits.length === 11 || digits.length === 12) &&
+    digits[1] === '1'
+  ) {
+    return `+880${digits.slice(1)}`
+  }
+  if (digits.startsWith('1') && (digits.length === 10 || digits.length === 11)) {
+    return `+880${digits}`
+  }
+  return null
 }
 
 async function establishAdminSession(
   phoneE164: string,
   otp: string,
 ): Promise<ApiResult<AuthSession>> {
-  const verified = await verifyOtp({ phone: phoneE164, otp, purpose: 'login' })
+  const verified = await verifyOtp({
+    phone: phoneE164,
+    otp,
+    purpose: 'login',
+    asAdmin: true,
+  })
   if (!verified.ok) return verified
 
   let session = verified.data
@@ -89,24 +107,17 @@ function AdminLoginForm() {
     }
   }, [router, next])
 
-  const formatPhone = (value: string) => {
-    const digits = value.replace(/\D/g, '')
-    if (digits.startsWith('880')) return digits.slice(0, 13)
-    if (digits.startsWith('0')) return '880' + digits.slice(1, 11)
-    return '880' + digits.slice(0, 10)
-  }
-
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setDevHint(null)
-    const normalized = formatPhone(phone)
-    if (normalized.length !== 13) {
+    const phoneE164 = normalizeBdPhone(phone)
+    if (!phoneE164) {
       setError(t('invalidPhone'))
       return
     }
     setLoading(true)
-    const result = await startLogin({ phone: toE164(normalized) })
+    const result = await startLogin({ phone: phoneE164, asAdmin: true })
     setLoading(false)
 
     if (!result.ok) {
@@ -114,7 +125,6 @@ function AdminLoginForm() {
       return
     }
 
-    setPhone(normalized)
     if (result.data.next === 'pin') {
       setStep('pin')
       setPin('')
@@ -136,7 +146,13 @@ function AdminLoginForm() {
     }
 
     setLoading(true)
-    const result = await establishAdminSession(toE164(phone), otp)
+    const phoneE164 = normalizeBdPhone(phone)
+    if (!phoneE164) {
+      setLoading(false)
+      setError(t('invalidPhone'))
+      return
+    }
+    const result = await establishAdminSession(phoneE164, otp)
     setLoading(false)
 
     if (!result.ok) {
@@ -155,7 +171,13 @@ function AdminLoginForm() {
       return
     }
     setLoading(true)
-    const loggedIn = await loginWithPin({ phone: toE164(phone), pin })
+    const phoneE164 = normalizeBdPhone(phone)
+    if (!phoneE164) {
+      setLoading(false)
+      setError(t('invalidPhone'))
+      return
+    }
+    const loggedIn = await loginWithPin({ phone: phoneE164, pin })
     setLoading(false)
     if (!loggedIn.ok) {
       setError(loggedIn.error)
@@ -183,42 +205,7 @@ function AdminLoginForm() {
     router.replace(session.needsPinSetup ? '/set-pin' : next)
   }
 
-  const quickLogin = async (demoPhone: string) => {
-    setError('')
-    setLoading(true)
-    const e164 = toE164(demoPhone)
-
-    const requested = await requestOtp({ phone: e164, purpose: 'login' })
-    if (!requested.ok) {
-      setLoading(false)
-      setError(requested.error)
-      return
-    }
-
-    const code = requested.data.devOtp
-    if (!code) {
-      setLoading(false)
-      setPhone(e164.replace('+', ''))
-      setStep('otp')
-      setDevHint('')
-      setError('SMS sent — enter the OTP from your phone.')
-      return
-    }
-
-    const result = await establishAdminSession(e164, code)
-    setLoading(false)
-
-    if (!result.ok) {
-      setError(result.error)
-      return
-    }
-
-    router.replace(result.data.needsPinSetup ? '/set-pin' : next)
-  }
-
-  const displayPhone = phone
-    ? `+${phone.slice(0, 3)} ${phone.slice(3)}`
-    : ''
+  const displayPhone = normalizeBdPhone(phone) || phone
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
@@ -260,8 +247,12 @@ function AdminLoginForm() {
                     id="admin-phone"
                     type="tel"
                     placeholder={t('phonePlaceholder')}
-                    value={phone ? displayPhone : ''}
-                    onChange={e => setPhone(formatPhone(e.target.value))}
+                    value={phone}
+                    onChange={e => {
+                      const next = e.target.value.replace(/[^\d+]/g, '')
+                      const plus = next.startsWith('+') ? '+' : ''
+                      setPhone(`${plus}${next.replace(/\D/g, '').slice(0, 14)}`)
+                    }}
                     required
                   />
                 </div>
@@ -352,29 +343,6 @@ function AdminLoginForm() {
                 </Button>
               </form>
             )}
-
-            <div className="border-t pt-4">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">
-                {t('demoQuickLogin')}
-              </p>
-              <div className="space-y-2">
-                {Object.entries(DEMO_ADMIN_PHONES).map(([num, role]) => (
-                  <Button
-                    key={num}
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-between"
-                    disabled={loading}
-                    onClick={() => quickLogin(num)}
-                  >
-                    <span>
-                      +{num.slice(0, 3)} {num.slice(3)}
-                    </span>
-                    <Badge variant="secondary">{ADMIN_ROLE_LABELS[role]}</Badge>
-                  </Button>
-                ))}
-              </div>
-            </div>
           </CardContent>
         </Card>
 

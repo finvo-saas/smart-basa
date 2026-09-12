@@ -1012,7 +1012,6 @@ export default function ProfilePage() {
                     className="w-full justify-start"
                     onClick={async () => {
                       await logout()
-                      window.location.assign('/')
                     }}
                   >
                     <LogOut className="mr-2 h-4 w-4" />

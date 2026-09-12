@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Layout } from '@/components/layout/Layout'
@@ -28,6 +28,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  ownerSheetClass,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -38,6 +39,13 @@ import {
   fetchBookingsForOwner,
   patchBookingStatus,
 } from '@/lib/api/bookings'
+import {
+  confirmTakenReport,
+  dismissTakenReport,
+  fetchTakenReports,
+  type TakenReport,
+} from '@/lib/api/discover'
+import { cn } from '@/lib/utils'
 import type { Booking, BookingStatus } from '@/types/booking'
 import { Calendar, CheckCircle2, Clock, Plus } from 'lucide-react'
 
@@ -54,12 +62,23 @@ export default function OwnerBookingsPage() {
   const [rejectionReason, setRejectionReason] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
+  const [takenReports, setTakenReports] = useState<TakenReport[]>([])
 
   const load = useCallback(
     () => fetchBookingsForOwner(),
     [tick]
   )
   const { data: bookings, loading, error, refetch } = useMockQuery(load)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchTakenReports().then(result => {
+      if (!cancelled && result.ok) setTakenReports(result.data)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [tick])
 
   const ownerBookings =
     bookings?.filter(b =>
@@ -138,6 +157,18 @@ export default function OwnerBookingsPage() {
     refresh()
   }
 
+  const respondToReport = async (report: TakenReport, action: 'confirm' | 'dismiss') => {
+    const result = action === 'confirm'
+      ? await confirmTakenReport(report.id)
+      : await dismissTakenReport(report.id)
+    if (!result.ok) {
+      setActionError(result.error)
+      return
+    }
+    toast.success(action === 'confirm' ? t('takenConfirmed') : t('takenDismissed'))
+    refresh()
+  }
+
   return (
     <Layout>
       <PageContainer>
@@ -157,6 +188,38 @@ export default function OwnerBookingsPage() {
         {actionError && (
           <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {actionError}
+          </div>
+        )}
+
+        {takenReports.length > 0 && (
+          <div className="mb-6 space-y-3">
+            {takenReports.map(report => (
+              <Card key={report.id} className="border-amber-300/70 bg-amber-50/60">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">{t('takenTitle')}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    {t('takenBody', { name: report.listingName })}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void respondToReport(report, 'dismiss')}
+                    >
+                      {t('dismissTaken')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => void respondToReport(report, 'confirm')}
+                    >
+                      {t('confirmTaken')}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
 
@@ -226,7 +289,7 @@ export default function OwnerBookingsPage() {
 
         {!loading && !error && (
           <Tabs defaultValue="pending" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+            <TabsList className="h-auto w-full justify-start">
               <TabsTrigger value="pending">
                 {t('pending')} ({pendingBookings.length})
               </TabsTrigger>
@@ -332,8 +395,8 @@ export default function OwnerBookingsPage() {
         />
 
         <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-          <DialogContent>
-            <DialogHeader>
+          <DialogContent className={cn(ownerSheetClass('sm:max-w-md'), 'gap-4 overflow-y-auto p-4 sm:p-6')}>
+            <DialogHeader className="pr-8 text-left">
               <DialogTitle>{t('rejectTitle')}</DialogTitle>
               <DialogDescription>{t('rejectDesc')}</DialogDescription>
             </DialogHeader>

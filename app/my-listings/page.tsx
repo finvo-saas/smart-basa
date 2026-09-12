@@ -23,6 +23,7 @@ import { useMockQuery } from '@/hooks/useMockQuery'
 import { fetchOwnerListings, updateListing } from '@/lib/api/properties'
 import { fetchFlatLimitStatus } from '@/lib/api/subscriptions'
 import { listingPath } from '@/lib/seo/slug'
+import { toast } from '@/lib/feedback/toast'
 import { useAppFormat } from '@/hooks/useAppFormat'
 import { confirmDiscoverItem } from '@/lib/api/discover'
 import { Building2, Plus, Eye, Pencil, Pause, Play, Sparkles, CheckCircle } from 'lucide-react'
@@ -45,10 +46,14 @@ export default function MyListingsPage() {
 
   const togglePublish = async (listing: Property) => {
     const nextPublished = !listing.published
-    await updateListing(listing.id, {
+    const result = await updateListing(listing.id, {
       published: nextPublished,
       listingStatus: nextPublished ? 'published' : 'paused',
     })
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
     setTick(n => n + 1)
     refetch()
   }

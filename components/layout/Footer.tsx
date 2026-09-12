@@ -1,7 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { BrandLockup } from '@/components/layout/BrandLogo'
+import Link from 'next/link'
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear()
@@ -150,7 +150,7 @@ export const Footer = () => {
             </h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
               <li>Email: info@smartbasa.com</li>
-              <li>Phone: +880 1234 567890</li>
+              <li>Phone: +880 1991166550</li>
               <li>Dhaka, Bangladesh</li>
             </ul>
           </div>

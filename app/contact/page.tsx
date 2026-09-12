@@ -1,21 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-import { useTranslations } from 'next-intl'
 import { Layout } from '@/components/layout/Layout'
 import { PageContainer, PageHeader } from '@/components/page'
 import { Button } from '@/components/ui/button'
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Mail, MapPin, Phone, Send } from 'lucide-react'
+import { useTranslations } from 'next-intl'
+import { useState } from 'react'
 
 export default function Contact() {
   const t = useTranslations('legal')
@@ -60,7 +60,7 @@ export default function Contact() {
               </li>
               <li className="flex gap-3">
                 <Phone className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                <span>+880 1234 567890</span>
+                <span>+880 1991166550</span>
               </li>
               <li className="flex gap-3">
                 <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" />

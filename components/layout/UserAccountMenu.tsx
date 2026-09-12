@@ -101,7 +101,6 @@ export function UserAccountMenu({
 
   const handleLogout = async () => {
     await logout()
-    window.location.assign('/')
   }
 
   return (

@@ -6,8 +6,8 @@ import type { LivingCost } from '@/types/living'
 
 const ROWS: Array<keyof Pick<
   LivingCost,
-  'rent' | 'electricity' | 'gas' | 'internet' | 'water' | 'transport' | 'meals'
->> = ['rent', 'electricity', 'gas', 'internet', 'water', 'transport', 'meals']
+  'rent' | 'serviceCharge' | 'electricity' | 'gas' | 'internet' | 'water' | 'transport' | 'meals'
+>> = ['rent', 'serviceCharge', 'electricity', 'gas', 'internet', 'water', 'transport', 'meals']
 
 export function LivingCostCard({ cost }: { cost: LivingCost }) {
   const t = useTranslations('living.cost')
@@ -32,7 +32,7 @@ export function LivingCostCard({ cost }: { cost: LivingCost }) {
           {formatCurrency(cost.total)}
         </span>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">{t('note')}</p>
+      <p className="mt-2 text-xs text-muted-foreground">{cost.note || t('note')}</p>
     </div>
   )
 }

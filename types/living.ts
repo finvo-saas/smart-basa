@@ -21,6 +21,7 @@ export type VerificationScore = {
 
 export type LivingCost = {
   rent: number
+  serviceCharge?: number
   electricity: number
   gas: number
   internet: number

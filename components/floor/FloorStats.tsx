@@ -39,7 +39,7 @@ export function FloorStats({ stats, floorName }: FloorStatsProps) {
       {/* Header */}
       {floorName && (
         <div>
-          <h2 className="text-xl font-bold mb-2">{floorName} Statistics</h2>
+        <h2 className="mb-2 break-words text-lg font-bold sm:text-xl">{floorName} Statistics</h2>
           <p className="text-muted-foreground">
             Comprehensive statistics for this floor
           </p>
@@ -77,7 +77,7 @@ export function FloorStats({ stats, floorName }: FloorStatsProps) {
             <CardTitle className="text-base">Total Rent</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-primary">
+            <p className="break-all text-xl font-bold text-primary sm:text-2xl">
               ৳{stats.totalRent.toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -90,7 +90,7 @@ export function FloorStats({ stats, floorName }: FloorStatsProps) {
             <CardTitle className="text-base">Collected Rent</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <p className="break-all text-xl font-bold text-green-600 dark:text-green-400 sm:text-2xl">
               ৳{stats.collectedRent.toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -103,7 +103,7 @@ export function FloorStats({ stats, floorName }: FloorStatsProps) {
             <CardTitle className="text-base">Pending Rent</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+            <p className="break-all text-xl font-bold text-orange-600 dark:text-orange-400 sm:text-2xl">
               ৳{stats.pendingRent.toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground mt-1">

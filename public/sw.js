@@ -1,10 +1,12 @@
-/* SmartBasa service worker — push + offline shell */
-const CACHE = 'smart-living-shell-v1'
-const PRECACHE = ['/', '/manifest.webmanifest', '/icons/icon.svg', '/offline']
+/* SmartBasa service worker — push + offline fallback only.
+   Do not cache HTML or JS. Those caches were serving yesterday's design
+   until a hard refresh. */
+const CACHE = 'smart-living-shell-v2'
+const OFFLINE_URL = '/offline'
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(PRECACHE).catch(() => undefined)),
+    caches.open(CACHE).then(cache => cache.addAll([OFFLINE_URL]).catch(() => undefined)),
   )
   self.skipWaiting()
 })
@@ -23,44 +25,15 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET') return
   const url = new URL(req.url)
   if (url.origin !== self.location.origin) return
-  // Never cache API
   if (url.pathname.startsWith('/api/')) return
 
-  if (req.mode === 'navigate') {
-    event.respondWith(
-      fetch(req)
-        .then(res => {
-          const copy = res.clone()
-          caches.open(CACHE).then(c => c.put(req, copy))
-          return res
-        })
-        .catch(() =>
-          caches.match(req).then(cached => cached || caches.match('/offline')),
-        ),
-    )
-    return
-  }
+  // Only intercept full page loads, and only to show the offline page when
+  // the network is down. Online visits always use the live page.
+  if (req.mode !== 'navigate') return
 
-  // Cache-first for static assets
-  if (
-    url.pathname.startsWith('/_next/static/') ||
-    url.pathname.startsWith('/icons/') ||
-    url.pathname.endsWith('.svg') ||
-    url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.webp')
-  ) {
-    event.respondWith(
-      caches.match(req).then(
-        cached =>
-          cached ||
-          fetch(req).then(res => {
-            const copy = res.clone()
-            caches.open(CACHE).then(c => c.put(req, copy))
-            return res
-          }),
-      ),
-    )
-  }
+  event.respondWith(
+    fetch(req).catch(() => caches.match(OFFLINE_URL)),
+  )
 })
 
 self.addEventListener('push', event => {

@@ -28,7 +28,7 @@ export function BuildingCard({ building, onEdit }: BuildingCardProps) {
             <Building2 className="h-5 w-5 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
-            <CardTitle className="text-lg sm:text-xl">{building.name}</CardTitle>
+          <CardTitle className="break-words text-lg sm:text-xl">{building.name}</CardTitle>
             <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
               <MapPin className="h-3.5 w-3.5 shrink-0" />
               <span className="line-clamp-1">{building.address}</span>
@@ -49,18 +49,18 @@ export function BuildingCard({ building, onEdit }: BuildingCardProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground">Total flats</p>
-            <p className="text-lg font-semibold">{building.totalFlats}</p>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="min-w-0">
+            <p className="text-[11px] leading-tight text-muted-foreground">Total flats</p>
+            <p className="text-base font-semibold sm:text-lg">{building.totalFlats}</p>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Occupied</p>
-            <p className="text-lg font-semibold">{building.occupiedFlats}</p>
+          <div className="min-w-0">
+            <p className="text-[11px] leading-tight text-muted-foreground">Occupied</p>
+            <p className="text-base font-semibold sm:text-lg">{building.occupiedFlats}</p>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Available</p>
-            <p className="text-lg font-semibold text-primary">{availableFlats}</p>
+          <div className="min-w-0">
+            <p className="text-[11px] leading-tight text-muted-foreground">Available</p>
+            <p className="text-base font-semibold text-primary sm:text-lg">{availableFlats}</p>
           </div>
         </div>
 

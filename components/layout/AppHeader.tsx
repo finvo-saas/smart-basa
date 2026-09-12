@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import { LanguageSwitcher } from '@/components/i18n'
@@ -55,18 +55,21 @@ type GuestLink = {
 
 const GUEST_LINKS: GuestLink[] = [
   { href: '/search', labelKey: 'navSearch' },
-  { href: '/messes', labelKey: 'navMess' },
+  { href: '/search?category=mess', labelKey: 'navMess' },
   { href: '/areas', labelKey: 'navAreas' },
   { href: '/university', labelKey: 'navUniversities' },
-  { href: '/hotels', labelKey: 'navHotels' },
+  { href: '/search?category=hotel', labelKey: 'navHotels' },
   { href: '/search?category=apartment', labelKey: 'navApartments' },
   { href: '/roommates', labelKey: 'navRoommates' },
 ]
 
-function guestLinkActive(pathname: string, href: string) {
-  const path = href.split('?')[0]
+function guestLinkActive(pathname: string, href: string, search: string) {
+  const [path, query = ''] = href.split('?')
   if (path === '/search') {
-    return pathname === '/search' || pathname.startsWith('/listings')
+    if (pathname !== '/search') return false
+    const wanted = new URLSearchParams(query).get('category') || 'all'
+    const current = new URLSearchParams(search).get('category') || 'all'
+    return current === wanted
   }
   return pathname === path || pathname.startsWith(`${path}/`)
 }
@@ -74,6 +77,8 @@ function guestLinkActive(pathname: string, href: string) {
 export function AppHeader() {
   const t = useTranslations('layout')
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const search = searchParams.toString()
   const { theme, toggle: toggleTheme } = useTheme()
   const [userName, setUserName] = useState('Guest')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
@@ -226,7 +231,7 @@ export function AppHeader() {
                     size="sm"
                     asChild
                     className={cn(
-                      guestLinkActive(pathname, link.href) &&
+                      guestLinkActive(pathname, link.href, search) &&
                         'bg-accent text-accent-foreground'
                     )}
                   >
@@ -326,7 +331,7 @@ export function AppHeader() {
             </SheetHeader>
             <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-3">
               {GUEST_LINKS.map(link => {
-                const active = guestLinkActive(pathname, link.href)
+                const active = guestLinkActive(pathname, link.href, search)
                 return (
                   <Link
                     key={link.href}

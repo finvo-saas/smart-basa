@@ -13,12 +13,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { loginWithPin, requestOtp, startLogin } from '@/lib/api/auth'
-import { applyAuthSession, nextPathAfterAuth } from '@/utils/auth'
+import { applyAuthSession, nextPathAfterAuth, rememberAuthReturn } from '@/utils/auth'
 import { authStorageRemove, authStorageSet } from '@/utils/auth-storage'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function Login() {
   const router = useRouter()
@@ -29,6 +29,11 @@ export default function Login() {
   const [step, setStep] = useState<'phone' | 'pin'>('phone')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search).get('next')
+    if (next) rememberAuthReturn(next)
+  }, [])
 
   const formatPhoneNumber = (value: string) => {
     const digits = value.replace(/\D/g, '')

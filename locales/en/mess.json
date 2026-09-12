@@ -189,6 +189,14 @@
     "bookSeat": "Book this seat",
     "preparingBook": "Opening booking…",
     "loginHint": "Log in if prompted — we’ll take you straight to booking.",
+    "trustTitle": "Living, safety, and trust",
+    "trustBody": "These scores come from the published listing. Reviews and the full breakdown are on that page.",
+    "viewListing": "Open the full listing",
+    "viewListingHint": "Photos, reviews, and the full breakdown",
+    "trustPending": "Publish this mess to the marketplace to show living, safety, and trust scores.",
+    "scoreLiving": "Living",
+    "scoreSafety": "Safety",
+    "scoreTrust": "Trust",
     "mealSystemTitle": "Meal system",
     "mealSystemSubtitle": "Today’s menu, weekly calendar, and guest meal pricing.",
     "mealsPerDay": "{count} meals / day",
@@ -214,7 +222,29 @@
     "loadShedding": "Load shedding",
     "manualDetails": "Extra details",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "availabilityValues": {
+      "24_7": "24/7",
+      "limited": "Limited hours",
+      "frequent_problem": "Frequent problem"
+    },
+    "sourceValues": {
+      "wasa": "WASA",
+      "deep_tube_well": "Deep tube well",
+      "both": "WASA + tube well",
+      "other": "Other"
+    },
+    "sheddingValues": {
+      "rare": "Rare",
+      "moderate": "Moderate",
+      "frequent": "Frequent"
+    },
+    "scoreLabels": {
+      "Excellent": "Excellent",
+      "Reliable": "Reliable",
+      "Average": "Average",
+      "Unreliable": "Unreliable"
+    }
   },
   "hisab": {
     "loading": "Loading মিল হিসাব…",

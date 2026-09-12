@@ -43,6 +43,10 @@ export type MessProfileInput = {
   address: string
   city: string
   monthlyFee: number
+  electricityBill?: number | null
+  gasBill?: number | null
+  internetBill?: number | null
+  waterBill?: number | null
   gender: 'male' | 'female' | 'mixed'
   facilities?: string[]
   images?: string[]

@@ -56,6 +56,10 @@ export interface Property {
   propertyFace?: PropertyFace
   /** Monthly service charge (BDT), in addition to rent */
   serviceCharge?: number | null
+  electricityBill?: number | null
+  gasBill?: number | null
+  internetBill?: number | null
+  waterBill?: number | null
   parkingCount?: number | null
   /** ISO date YYYY-MM-DD */
   availableFrom?: string | null
@@ -77,6 +81,8 @@ export interface Property {
   createdAt: string
   /** Instant book auto-approves; otherwise owner must accept */
   instantBook?: boolean
+  /** Flat in My properties that this apartment listing is for. */
+  linkedFlatId?: string | null
   /** Security deposit in months of rent */
   depositMonths?: number
   /** Public discovery visibility */
@@ -143,6 +149,10 @@ export interface PropertyListingInput {
   unitNumber?: string
   propertyFace?: PropertyFace
   serviceCharge?: number | null
+  electricityBill?: number | null
+  gasBill?: number | null
+  internetBill?: number | null
+  waterBill?: number | null
   parkingCount?: number | null
   availableFrom?: string | null
   rentNegotiable?: boolean
@@ -152,6 +162,8 @@ export interface PropertyListingInput {
   security?: boolean
   description: string
   instantBook?: boolean
+  /** Vacant flat this apartment listing is attached to. Required to publish. */
+  flatId?: string | null
   depositMonths?: number
   published?: boolean
   listingStatus?: ListingStatus

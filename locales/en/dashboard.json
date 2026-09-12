@@ -12,6 +12,7 @@
   "manageProperties": "Manage properties",
   "renter": {
     "greeting": "Welcome back",
+    "dismissWelcome": "Dismiss welcome for this visit",
     "profile": "Profile",
     "profileCompletion": "Profile",
     "overdueTitle": "{count, plural, one {# overdue bill} other {# overdue bills}}",

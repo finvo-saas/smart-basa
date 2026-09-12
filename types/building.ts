@@ -30,6 +30,10 @@ export interface Flat {
   tenancyId?: string | null
   /** Linked public listing (apartment marketplace) */
   listingId?: string | null
+  electricityBill?: number | null
+  gasBill?: number | null
+  internetBill?: number | null
+  waterBill?: number | null
 }
 
 export interface Building {

@@ -32,9 +32,11 @@ export function FloorCard({
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-              <Building2 className="h-5 w-5 text-primary" />
-              {floor.name || `Floor ${floor.floorNumber}`}
+            <CardTitle className="flex min-w-0 items-center gap-2 text-base md:text-lg">
+              <Building2 className="h-5 w-5 shrink-0 text-primary" />
+              <span className="min-w-0 break-words">
+                {floor.name || `Floor ${floor.floorNumber}`}
+              </span>
             </CardTitle>
             {buildingName && (
               <p className="text-xs text-muted-foreground mt-1">

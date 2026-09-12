@@ -3,6 +3,7 @@ import type { ApiResult } from './http'
 import type { Property } from '@/types/property'
 import type { Hotel } from '@/types/hotel'
 import type { Mess } from '@/types/mess'
+import { hasAuthTokens } from '@/utils/auth-tokens'
 
 export type DiscoverCategory = 'all' | 'mess' | 'apartment' | 'hostel' | 'hotel'
 
@@ -93,12 +94,32 @@ export async function respondHeartbeatPing(
 export async function reportDiscoverItem(
   targetType: 'listing' | 'hotel' | 'mess',
   id: string,
-): Promise<ApiResult<{ reported: boolean; id: string }>> {
+): Promise<ApiResult<{ reported: boolean; id: string; alreadyPending?: boolean; listingStillVisible?: boolean }>> {
   return apiRequest('/discover/report/', {
     method: 'POST',
-    auth: false,
+    auth: hasAuthTokens(),
     body: { targetType, id },
   })
+}
+
+export type TakenReport = {
+  id: string
+  listingId: string
+  listingName: string
+  status: string
+  createdAt: string
+}
+
+export async function fetchTakenReports(): Promise<ApiResult<TakenReport[]>> {
+  return apiRequest('/discover/taken-reports/')
+}
+
+export async function confirmTakenReport(id: string): Promise<ApiResult<TakenReport>> {
+  return apiRequest(`/discover/taken-reports/${id}/confirm/`, { method: 'POST' })
+}
+
+export async function dismissTakenReport(id: string): Promise<ApiResult<TakenReport>> {
+  return apiRequest(`/discover/taken-reports/${id}/dismiss/`, { method: 'POST' })
 }
 
 export async function fetchNearbyPOIs(

@@ -23,6 +23,7 @@ import {
   getLoginPhone,
   getPendingAdminRole,
   hasCompleteSession,
+  nextPathAfterAuth,
   isOtpVerified,
   needsPinSetup,
 } from '@/utils/auth'
@@ -88,11 +89,7 @@ export default function RoleSelection() {
 
     applyAuthSession(result.data, { complete: true })
 
-    if (result.data.user.role === 'admin') {
-      router.push('/admin')
-      return
-    }
-    router.push('/dashboard')
+    router.push(nextPathAfterAuth(result.data))
   }
 
   const showAdmin = availableRoles.includes('admin') && Boolean(adminRoleLabel)

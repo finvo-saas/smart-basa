@@ -9,20 +9,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ownerSheetClass,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import type { Booking } from '@/types/booking'
 import type { Flat } from '@/types/building'
 import { fetchAllFlats } from '@/lib/api/buildings'
 import { useAppFormat } from '@/hooks/useAppFormat'
+import { cn } from '@/lib/utils'
 
 interface ApproveBookingFlatDialogProps {
   booking: Booking | null
@@ -62,22 +56,19 @@ export function ApproveBookingFlatDialog({
     })()
   }, [open, booking])
 
-  const candidates = useMemo(() => {
-    if (!booking) return []
-    return flats.filter(f => {
-      if (f.status !== 'available') return false
-      if (f.listingId && f.listingId === booking.propertyId) return true
-      if (!f.listingId) return true
-      return false
-    })
+  const linkedFlat = useMemo(() => {
+    if (!booking) return null
+    return (
+      flats.find(
+        flat =>
+          flat.listingId === booking.propertyId && flat.status === 'available',
+      ) || null
+    )
   }, [flats, booking])
 
-  const linkedFirst = useMemo(() => {
-    if (!booking) return candidates
-    const linked = candidates.filter(f => f.listingId === booking.propertyId)
-    const rest = candidates.filter(f => f.listingId !== booking.propertyId)
-    return [...linked, ...rest]
-  }, [candidates, booking])
+  useEffect(() => {
+    setFlatId(linkedFlat?.id || '')
+  }, [linkedFlat])
 
   const handleConfirm = async () => {
     if (!booking || !flatId) return
@@ -92,12 +83,12 @@ export function ApproveBookingFlatDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className={cn(ownerSheetClass('sm:max-w-md'), 'gap-4 overflow-y-auto p-4 sm:p-6')}>
+        <DialogHeader className="pr-8 text-left">
           <DialogTitle>{t('approveWithFlatTitle')}</DialogTitle>
           <DialogDescription>
             {booking
-              ? t('approveWithFlatDesc', {
+              ? t('approveLinkedDesc', {
                   renter: booking.renterName,
                   property: booking.propertyName,
                 })
@@ -109,34 +100,22 @@ export function ApproveBookingFlatDialog({
           <p className="text-sm text-muted-foreground">{t('loadingFlats')}</p>
         ) : loadError ? (
           <p className="text-sm text-destructive">{loadError}</p>
-        ) : linkedFirst.length === 0 ? (
+        ) : !linkedFlat ? (
           <div className="space-y-2 text-sm">
-            <p className="text-destructive">{t('noVacantFlats')}</p>
-            <p className="text-muted-foreground">{t('noVacantFlatsHint')}</p>
+            <p className="text-destructive">{t('noLinkedFlat')}</p>
+            <p className="text-muted-foreground">{t('noLinkedFlatHint')}</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            <Label>{t('selectFlat')}</Label>
-            <Select value={flatId} onValueChange={setFlatId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('selectFlatPlaceholder')} />
-              </SelectTrigger>
-              <SelectContent>
-                {linkedFirst.map(flat => (
-                  <SelectItem key={flat.id} value={flat.id}>
-                    {t('flatOption', {
-                      number: flat.flatNumber,
-                      floor: flat.floor,
-                      rent: formatCurrency(flat.rent),
-                      linked:
-                        flat.listingId === booking?.propertyId
-                          ? t('linkedBadge')
-                          : '',
-                    })}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="rounded-lg border p-3 text-sm">
+            <p className="font-medium">
+              {t('flatOption', {
+                number: linkedFlat.flatNumber,
+                floor: linkedFlat.floor,
+                rent: formatCurrency(linkedFlat.rent),
+                linked: t('linkedBadge'),
+              })}
+            </p>
+            <p className="mt-1 text-muted-foreground">{t('approveLinkedNote')}</p>
           </div>
         )}
 
@@ -146,7 +125,7 @@ export function ApproveBookingFlatDialog({
           </Button>
           <Button
             onClick={() => void handleConfirm()}
-            disabled={!flatId || submitting || linkedFirst.length === 0}
+            disabled={!linkedFlat || submitting}
           >
             {t('confirmApprove')}
           </Button>

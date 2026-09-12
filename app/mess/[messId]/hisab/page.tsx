@@ -1,17 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
-import { format } from 'date-fns'
 import { Layout } from '@/components/layout/Layout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { MessSubpageBackButton } from '@/components/mess/MessSubpageBackButton'
 import { LoadingState } from '@/components/page'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useMockQuery } from '@/hooks/useMockQuery'
 import {
   addMemberDeposit,
   closeHisabMonth,
@@ -29,13 +26,16 @@ import {
   updateMessMealPricing,
   updateMessUtilities,
 } from '@/lib/api/mess'
-import { useMockQuery } from '@/hooks/useMockQuery'
-import { formatCurrency } from '@/lib/format/locale'
-import { getStoredRole } from '@/utils/auth'
 import { toast } from '@/lib/feedback/toast'
+import { formatCurrency } from '@/lib/format/locale'
 import type { HisabGridRow } from '@/types/mess'
+import { getStoredRole } from '@/utils/auth'
+import { format } from 'date-fns'
 import { Calculator, Check, RotateCcw, Save } from 'lucide-react'
-import { MessSubpageBackButton } from '@/components/mess/MessSubpageBackButton'
+import { useTranslations } from 'next-intl'
+import Link from 'next/link'
+import { useParams, useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
 
 export default function MessHisabPage() {
   const t = useTranslations('mess.hisab')
@@ -66,8 +66,8 @@ export default function MessHisabPage() {
   const [mealOffDinner, setMealOffDinner] = useState(true)
   const [mealOffSubmitting, setMealOffSubmitting] = useState(false)
   const [mealOffFormOpen, setMealOffFormOpen] = useState(false)
-  const [waterAvail, setWaterAvail] = useState('24_7')
-  const [powerAvail, setPowerAvail] = useState('24_7')
+  const [waterAvail, setWaterAvail] = useState('24/7')
+  const [powerAvail, setPowerAvail] = useState('24/7')
   const [waterSource, setWaterSource] = useState('wasa')
   const [loadShedding, setLoadShedding] = useState('rare')
   const [meterType, setMeterType] = useState('shared')
@@ -82,22 +82,29 @@ export default function MessHisabPage() {
   const [emergencyLight, setEmergencyLight] = useState(false)
   const [showManualUtilities, setShowManualUtilities] = useState(false)
   const [waterSourceManual, setWaterSourceManual] = useState('')
-  const [manualPairs, setManualPairs] = useState<{ key: string; value: string }[]>([
-    { key: '', value: '' },
-  ])
+  const [manualPairs, setManualPairs] = useState<
+    { key: string; value: string }[]
+  >([{ key: '', value: '' }])
 
   const loadMess = useCallback(() => fetchMessById(messId), [messId])
-  const loadGrid = useCallback(() => fetchHisabGrid(messId, date), [messId, date])
+  const loadGrid = useCallback(
+    () => fetchHisabGrid(messId, date),
+    [messId, date]
+  )
   const loadMonth = useCallback(
     () => fetchHisabMonth(messId, month, year),
-    [messId, month, year],
+    [messId, month, year]
   )
   const loadOff = useCallback(() => fetchMealOffRequests(messId), [messId])
   const loadDeposits = useCallback(() => fetchMemberDeposits(messId), [messId])
   const loadStudents = useCallback(() => fetchMessStudents(messId), [messId])
 
-  const { data: mess, loading: messLoading, error: messError, refetch: refetchMess } =
-    useMockQuery(loadMess)
+  const {
+    data: mess,
+    loading: messLoading,
+    error: messError,
+    refetch: refetchMess,
+  } = useMockQuery(loadMess)
   const {
     data: grid,
     loading: gridLoading,
@@ -110,7 +117,11 @@ export default function MessHisabPage() {
     error: monthError,
     refetch: refetchMonth,
   } = useMockQuery(loadMonth)
-  const { data: offs, error: offsError, refetch: refetchOff } = useMockQuery(loadOff)
+  const {
+    data: offs,
+    error: offsError,
+    refetch: refetchOff,
+  } = useMockQuery(loadOff)
   const { data: deposits, refetch: refetchDep } = useMockQuery(loadDeposits)
   const { data: students, error: studentsError } = useMockQuery(loadStudents)
 
@@ -118,7 +129,7 @@ export default function MessHisabPage() {
     e =>
       e &&
       (/access|forbidden|owner|auth|sign in|log in|credential/i.test(e) ||
-        e.toLowerCase().includes('not authenticated')),
+        e.toLowerCase().includes('not authenticated'))
   )
 
   useEffect(() => {
@@ -130,7 +141,7 @@ export default function MessHisabPage() {
     setGuestPrice(
       mess.mealSystem?.guestMealPrice != null
         ? String(mess.mealSystem.guestMealPrice)
-        : '',
+        : ''
     )
     setMealsPerDay(String(mess.mealSystem?.mealsPerDay || 3))
     const w = mess.utilities?.water?.profile
@@ -174,9 +185,13 @@ export default function MessHisabPage() {
     setShowManualUtilities(pairs.length > 0)
   }, [mess])
 
-  const updateCell = (studentId: string, field: keyof HisabGridRow, value: number) => {
+  const updateCell = (
+    studentId: string,
+    field: keyof HisabGridRow,
+    value: number
+  ) => {
     setRows(prev =>
-      prev.map(r => (r.studentId === studentId ? { ...r, [field]: value } : r)),
+      prev.map(r => (r.studentId === studentId ? { ...r, [field]: value } : r))
     )
   }
 
@@ -194,7 +209,7 @@ export default function MessHisabPage() {
         guestLunch: r.guestLunch,
         guestDinner: r.guestDinner,
         notes: r.notes,
-      })),
+      }))
     )
     setSaving(false)
     if (!result.ok) {
@@ -419,7 +434,9 @@ export default function MessHisabPage() {
             </p>
           </div>
           {monthData ? (
-            <Badge variant={monthData.status === 'closed' ? 'secondary' : 'default'}>
+            <Badge
+              variant={monthData.status === 'closed' ? 'secondary' : 'default'}
+            >
               {monthData.status === 'closed' ? t('closed') : t('open')} ·{' '}
               {formatCurrency(monthData.mealRate)}/{t('meal')}
             </Badge>
@@ -433,7 +450,11 @@ export default function MessHisabPage() {
               <p>{accessError}</p>
               <p className="text-muted-foreground">{t('accessDeniedHint')}</p>
               <div className="flex flex-wrap gap-2 pt-1">
-                <Button size="sm" variant="outline" onClick={() => router.push('/mess')}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => router.push('/mess')}
+                >
                   {t('backToMess')}
                 </Button>
                 <Button
@@ -477,13 +498,25 @@ export default function MessHisabPage() {
                   />
                   {isOwner ? (
                     <>
-                      <Button size="sm" variant="outline" onClick={() => handleMarkAll(true)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleMarkAll(true)}
+                      >
                         {t('markAllOn')}
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleMarkAll(false)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleMarkAll(false)}
+                      >
                         {t('markAllOff')}
                       </Button>
-                      <Button size="sm" onClick={handleSaveGrid} disabled={saving}>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveGrid}
+                        disabled={saving}
+                      >
                         <Save className="mr-1 h-4 w-4" />
                         {t('save')}
                       </Button>
@@ -497,7 +530,11 @@ export default function MessHisabPage() {
                 ) : gridError ? (
                   <div className="space-y-3 py-8 text-center">
                     <p className="text-sm text-destructive">{gridError}</p>
-                    <Button size="sm" variant="outline" onClick={() => refetchGrid()}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => refetchGrid()}
+                    >
                       {t('retry')}
                     </Button>
                   </div>
@@ -518,7 +555,10 @@ export default function MessHisabPage() {
                       </thead>
                       <tbody>
                         {rows.map(row => (
-                          <tr key={row.studentId} className="border-b border-muted/60">
+                          <tr
+                            key={row.studentId}
+                            className="border-b border-muted/60"
+                          >
                             <td className="p-2 font-medium">
                               {row.name}
                               {row.seatNumber ? (
@@ -544,13 +584,15 @@ export default function MessHisabPage() {
                                   max={field.startsWith('guest') ? 20 : 3}
                                   step={field.startsWith('guest') ? 1 : 0.5}
                                   className="h-8 w-16"
-                                  disabled={!isOwner || monthData?.status === 'closed'}
+                                  disabled={
+                                    !isOwner || monthData?.status === 'closed'
+                                  }
                                   value={row[field]}
                                   onChange={e =>
                                     updateCell(
                                       row.studentId,
                                       field,
-                                      Number(e.target.value) || 0,
+                                      Number(e.target.value) || 0
                                     )
                                   }
                                 />
@@ -617,16 +659,29 @@ export default function MessHisabPage() {
                     <p className="text-sm text-destructive">
                       {monthError || t('loadFailed')}
                     </p>
-                    <Button size="sm" variant="outline" onClick={() => refetchMonth()}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => refetchMonth()}
+                    >
                       {t('retry')}
                     </Button>
                   </div>
                 ) : (
                   <>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                      <Stat label={t('bazaar')} value={formatCurrency(monthData.bazaarTotal)} />
-                      <Stat label={t('fixed')} value={formatCurrency(monthData.fixedTotal)} />
-                      <Stat label={t('totalMeals')} value={String(monthData.totalMeals)} />
+                      <Stat
+                        label={t('bazaar')}
+                        value={formatCurrency(monthData.bazaarTotal)}
+                      />
+                      <Stat
+                        label={t('fixed')}
+                        value={formatCurrency(monthData.fixedTotal)}
+                      />
+                      <Stat
+                        label={t('totalMeals')}
+                        value={String(monthData.totalMeals)}
+                      />
                       <Stat
                         label={t('mealRate')}
                         value={formatCurrency(monthData.mealRate)}
@@ -666,10 +721,18 @@ export default function MessHisabPage() {
                                 )}
                               </td>
                               <td className="p-2">{m.mealCount}</td>
-                              <td className="p-2">{formatCurrency(m.mealCost)}</td>
-                              <td className="p-2">{formatCurrency(m.guestCost)}</td>
-                              <td className="p-2">{formatCurrency(m.fixedShare)}</td>
-                              <td className="p-2">{formatCurrency(m.deposits)}</td>
+                              <td className="p-2">
+                                {formatCurrency(m.mealCost)}
+                              </td>
+                              <td className="p-2">
+                                {formatCurrency(m.guestCost)}
+                              </td>
+                              <td className="p-2">
+                                {formatCurrency(m.fixedShare)}
+                              </td>
+                              <td className="p-2">
+                                {formatCurrency(m.deposits)}
+                              </td>
                               <td className="p-2 font-semibold text-primary">
                                 {formatCurrency(m.due)}
                                 {m.credit > 0 ? (
@@ -683,7 +746,9 @@ export default function MessHisabPage() {
                         </tbody>
                       </table>
                     </div>
-                    <p className="text-xs text-muted-foreground">{monthData.note}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {monthData.note}
+                    </p>
                   </>
                 )}
               </CardContent>
@@ -751,10 +816,15 @@ export default function MessHisabPage() {
                           ? ` · ${d.status}`
                           : ''}
                         {d.note ? (
-                          <span className="text-muted-foreground"> — {d.note}</span>
+                          <span className="text-muted-foreground">
+                            {' '}
+                            — {d.note}
+                          </span>
                         ) : null}
                       </span>
-                      <span className="font-medium">{formatCurrency(d.amount)}</span>
+                      <span className="font-medium">
+                        {formatCurrency(d.amount)}
+                      </span>
                     </li>
                   ))}
                   {!deposits?.length ? (
@@ -786,102 +856,116 @@ export default function MessHisabPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {mealOffFormOpen ? (
-                <div className="grid grid-cols-1 gap-3 rounded-lg border bg-muted/20 p-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {isOwner ? (
-                    <label className="block text-sm sm:col-span-2 lg:col-span-1">
-                      <span className="mb-1 block font-medium">{t('member')}</span>
-                      <select
-                        className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                        value={mealOffStudentId}
-                        onChange={e => setMealOffStudentId(e.target.value)}
-                      >
-                        <option value="">{t('selectMember')}</option>
-                        {(students || []).map(s => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
+                  <div className="grid grid-cols-1 gap-3 rounded-lg border bg-muted/20 p-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {isOwner ? (
+                      <label className="block text-sm sm:col-span-2 lg:col-span-1">
+                        <span className="mb-1 block font-medium">
+                          {t('member')}
+                        </span>
+                        <select
+                          className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                          value={mealOffStudentId}
+                          onChange={e => setMealOffStudentId(e.target.value)}
+                        >
+                          <option value="">{t('selectMember')}</option>
+                          {(students || []).map(s => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+                    <label className="block text-sm">
+                      <span className="mb-1 block font-medium">
+                        {t('startDate')}
+                      </span>
+                      <Input
+                        type="date"
+                        value={mealOffStart}
+                        onChange={e => {
+                          const next = e.target.value
+                          setMealOffStart(next)
+                          if (mealOffEnd < next) setMealOffEnd(next)
+                        }}
+                      />
                     </label>
-                  ) : null}
-                  <label className="block text-sm">
-                    <span className="mb-1 block font-medium">{t('startDate')}</span>
-                    <Input
-                      type="date"
-                      value={mealOffStart}
-                      onChange={e => {
-                        const next = e.target.value
-                        setMealOffStart(next)
-                        if (mealOffEnd < next) setMealOffEnd(next)
-                      }}
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    <span className="mb-1 block font-medium">{t('endDate')}</span>
-                    <Input
-                      type="date"
-                      value={mealOffEnd}
-                      min={mealOffStart}
-                      onChange={e => setMealOffEnd(e.target.value)}
-                    />
-                  </label>
-                  <label className="block text-sm sm:col-span-2 lg:col-span-3">
-                    <span className="mb-1 block font-medium">{t('reason')}</span>
-                    <Input
-                      value={mealOffReason}
-                      onChange={e => setMealOffReason(e.target.value)}
-                      placeholder={t('reasonPlaceholder')}
-                    />
-                  </label>
-                  <div className="sm:col-span-2 lg:col-span-3">
-                    <p className="mb-2 text-sm font-medium">{t('mealsToSkip')}</p>
-                    <div className="flex flex-wrap gap-4 text-sm">
-                      <label className="inline-flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border"
-                          checked={mealOffBreakfast}
-                          onChange={e => setMealOffBreakfast(e.target.checked)}
-                        />
-                        {t('breakfast')}
-                      </label>
-                      <label className="inline-flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border"
-                          checked={mealOffLunch}
-                          onChange={e => setMealOffLunch(e.target.checked)}
-                        />
-                        {t('lunch')}
-                      </label>
-                      <label className="inline-flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border"
-                          checked={mealOffDinner}
-                          onChange={e => setMealOffDinner(e.target.checked)}
-                        />
-                        {t('dinner')}
-                      </label>
+                    <label className="block text-sm">
+                      <span className="mb-1 block font-medium">
+                        {t('endDate')}
+                      </span>
+                      <Input
+                        type="date"
+                        value={mealOffEnd}
+                        min={mealOffStart}
+                        onChange={e => setMealOffEnd(e.target.value)}
+                      />
+                    </label>
+                    <label className="block text-sm sm:col-span-2 lg:col-span-3">
+                      <span className="mb-1 block font-medium">
+                        {t('reason')}
+                      </span>
+                      <Input
+                        value={mealOffReason}
+                        onChange={e => setMealOffReason(e.target.value)}
+                        placeholder={t('reasonPlaceholder')}
+                      />
+                    </label>
+                    <div className="sm:col-span-2 lg:col-span-3">
+                      <p className="mb-2 text-sm font-medium">
+                        {t('mealsToSkip')}
+                      </p>
+                      <div className="flex flex-wrap gap-4 text-sm">
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border"
+                            checked={mealOffBreakfast}
+                            onChange={e =>
+                              setMealOffBreakfast(e.target.checked)
+                            }
+                          />
+                          {t('breakfast')}
+                        </label>
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border"
+                            checked={mealOffLunch}
+                            onChange={e => setMealOffLunch(e.target.checked)}
+                          />
+                          {t('lunch')}
+                        </label>
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border"
+                            checked={mealOffDinner}
+                            onChange={e => setMealOffDinner(e.target.checked)}
+                          />
+                          {t('dinner')}
+                        </label>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
+                      <Button
+                        onClick={handleMealOffRequest}
+                        disabled={mealOffSubmitting}
+                      >
+                        {mealOffSubmitting
+                          ? t('submitting')
+                          : t('submitMealOff')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={mealOffSubmitting}
+                        onClick={() => setMealOffFormOpen(false)}
+                      >
+                        {t('cancelRequest')}
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
-                    <Button
-                      onClick={handleMealOffRequest}
-                      disabled={mealOffSubmitting}
-                    >
-                      {mealOffSubmitting ? t('submitting') : t('submitMealOff')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={mealOffSubmitting}
-                      onClick={() => setMealOffFormOpen(false)}
-                    >
-                      {t('cancelRequest')}
-                    </Button>
-                  </div>
-                </div>
                 ) : null}
 
                 <ul className="space-y-2">
@@ -913,7 +997,7 @@ export default function MessHisabPage() {
                               const r = await reviewMealOffRequest(
                                 messId,
                                 req.id,
-                                true,
+                                true
                               )
                               if (!r.ok) toast.error(r.error)
                               else {
@@ -932,7 +1016,7 @@ export default function MessHisabPage() {
                               const r = await reviewMealOffRequest(
                                 messId,
                                 req.id,
-                                false,
+                                false
                               )
                               if (!r.ok) toast.error(r.error)
                               else {
@@ -988,7 +1072,9 @@ export default function MessHisabPage() {
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">{t('utilitiesTitle')}</CardTitle>
+                  <CardTitle className="text-lg">
+                    {t('utilitiesTitle')}
+                  </CardTitle>
                   <p className="text-sm text-muted-foreground">
                     {t('utilitiesHint')}
                   </p>
@@ -1078,7 +1164,7 @@ export default function MessHisabPage() {
                           value={powerAvail}
                           onChange={e => setPowerAvail(e.target.value)}
                         >
-                          <option value="24_7">24/7</option>
+                          <option value="24/7">24/7</option>
                           <option value="limited">{t('availLimited')}</option>
                           <option value="frequent_problem">
                             {t('availFrequent')}
@@ -1110,9 +1196,7 @@ export default function MessHisabPage() {
                         >
                           <option value="shared">{t('meterShared')}</option>
                           <option value="prepaid">{t('meterPrepaid')}</option>
-                          <option value="separate">
-                            {t('meterSeparate')}
-                          </option>
+                          <option value="separate">{t('meterSeparate')}</option>
                         </select>
                       </label>
                       <label className="text-sm">
@@ -1232,12 +1316,10 @@ export default function MessHisabPage() {
                               size="sm"
                               onClick={() => {
                                 const next = manualPairs.filter(
-                                  (_, i) => i !== index,
+                                  (_, i) => i !== index
                                 )
                                 setManualPairs(
-                                  next.length
-                                    ? next
-                                    : [{ key: '', value: '' }],
+                                  next.length ? next : [{ key: '', value: '' }]
                                 )
                               }}
                             >

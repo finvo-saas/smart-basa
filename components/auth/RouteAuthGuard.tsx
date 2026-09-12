@@ -11,8 +11,9 @@ import {
   isPublicPath,
   isRoleAllowed,
 } from '@/lib/auth'
-import { AUTH_SESSION_CHANGED } from '@/lib/auth/session-events'
+import { AUTH_SESSION_CHANGED, isLogoutGuardActive } from '@/lib/auth/session-events'
 import {
+  consumeAuthReturn,
   getLoginPhone,
   getStoredRole,
   hasCompleteSession,
@@ -21,7 +22,9 @@ import {
   isOtpVerified,
   isPinResetFlow,
   needsPinSetup,
+  peekAuthReturn,
 } from '@/utils/auth'
+import { peekPendingSavedSearch } from '@/lib/search/pendingSavedSearch'
 import { hasAuthTokens } from '@/utils/auth-tokens'
 import { LoadingState } from '@/components/page'
 import { AccessDenied } from './AccessDenied'
@@ -35,8 +38,13 @@ export function RouteAuthGuard({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<GuardState>('loading')
 
   useEffect(() => {
-    const evaluate = () => {
+    const evaluate = (fromSessionChange = false) => {
       const next = searchParams.get('next') || pathname
+      const afterAuth = () => {
+        const back = peekAuthReturn()
+        if (back) consumeAuthReturn()
+        return back || getDefaultPathForRole(role ?? 'renter')
+      }
       const role = getStoredRole()
       const pinNeeded = needsPinSetup()
       const pinReset = isPinResetFlow()
@@ -63,7 +71,11 @@ export function RouteAuthGuard({ children }: { children: React.ReactNode }) {
 
       if (isAuthFlowPath(pathname)) {
         if (pathname === '/login' && hasCompleteSession()) {
-          redirect(getDefaultPathForRole(role ?? 'renter'))
+          if (fromSessionChange) {
+            finish('ready')
+            return
+          }
+          redirect(afterAuth())
           return
         }
         if (pathname === '/otp-verify' && !getLoginPhone()) {
@@ -71,7 +83,11 @@ export function RouteAuthGuard({ children }: { children: React.ReactNode }) {
           return
         }
         if (pathname === '/otp-verify' && hasCompleteSession()) {
-          redirect(getDefaultPathForRole(role ?? 'renter'))
+          if (fromSessionChange) {
+            finish('ready')
+            return
+          }
+          redirect(afterAuth())
           return
         }
         if (pathname === '/set-pin') {
@@ -80,7 +96,11 @@ export function RouteAuthGuard({ children }: { children: React.ReactNode }) {
             return
           }
           if (!pinNeeded && !pinReset && hasCompleteSession()) {
-            redirect(getDefaultPathForRole(role ?? 'renter'))
+            if (fromSessionChange) {
+              finish('ready')
+              return
+            }
+            redirect(afterAuth())
             return
           }
           if (!pinNeeded && !pinReset) {
@@ -98,7 +118,11 @@ export function RouteAuthGuard({ children }: { children: React.ReactNode }) {
             return
           }
           if (isLoggedIn() && hasCompleteSession()) {
-            redirect(getDefaultPathForRole(role ?? 'renter'))
+            if (fromSessionChange) {
+              finish('ready')
+              return
+            }
+            redirect(afterAuth())
             return
           }
         }
@@ -126,6 +150,11 @@ export function RouteAuthGuard({ children }: { children: React.ReactNode }) {
             redirect('/role-selection')
             return
           }
+          // During logout, stay on home. Do not send the user to login.
+          if (fromSessionChange && isLogoutGuardActive()) {
+            redirect('/')
+            return
+          }
           redirect(`/login?next=${encodeURIComponent(next)}`)
           return
         }
@@ -144,12 +173,23 @@ export function RouteAuthGuard({ children }: { children: React.ReactNode }) {
         }
       }
 
+      if (
+        hasCompleteSession() &&
+        peekPendingSavedSearch() &&
+        pathname !== '/saved-searches' &&
+        !isAuthFlowPath(pathname)
+      ) {
+        redirect('/saved-searches')
+        return
+      }
+
       finish('ready')
     }
 
     evaluate()
-    window.addEventListener(AUTH_SESSION_CHANGED, evaluate)
-    return () => window.removeEventListener(AUTH_SESSION_CHANGED, evaluate)
+    const onSession = () => evaluate(true)
+    window.addEventListener(AUTH_SESSION_CHANGED, onSession)
+    return () => window.removeEventListener(AUTH_SESSION_CHANGED, onSession)
   }, [pathname, router, searchParams])
 
   if (state === 'loading') {

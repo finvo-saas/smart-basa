@@ -12,6 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ownerSheetClass,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,6 +32,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Flat, FlatStatus } from '@/types/building'
+import { cn } from '@/lib/utils'
+import { UtilityBillFields } from '@/components/property/UtilityBillFields'
 
 const flatSchema = z.object({
   flatNumber: z.string().min(1, 'Flat number is required'),
@@ -50,6 +53,10 @@ const flatSchema = z.object({
     .optional()
     .or(z.nan())
     .transform(v => (Number.isNaN(v) ? undefined : v)),
+  electricityBill: z.number().min(0).nullable().optional(),
+  gasBill: z.number().min(0).nullable().optional(),
+  internetBill: z.number().min(0).nullable().optional(),
+  waterBill: z.number().min(0).nullable().optional(),
 })
 
 export type FlatFormValues = {
@@ -60,6 +67,10 @@ export type FlatFormValues = {
   area?: number
   bedrooms?: number
   bathrooms?: number
+  electricityBill?: number | null
+  gasBill?: number | null
+  internetBill?: number | null
+  waterBill?: number | null
 }
 
 interface FlatFormDialogProps {
@@ -93,6 +104,10 @@ export function FlatFormDialog({
       area: undefined,
       bedrooms: undefined,
       bathrooms: undefined,
+      electricityBill: null,
+      gasBill: null,
+      internetBill: null,
+      waterBill: null,
     },
   })
 
@@ -107,6 +122,10 @@ export function FlatFormDialog({
         area: flat.area,
         bedrooms: flat.bedrooms,
         bathrooms: flat.bathrooms,
+        electricityBill: flat.electricityBill ?? null,
+        gasBill: flat.gasBill ?? null,
+        internetBill: flat.internetBill ?? null,
+        waterBill: flat.waterBill ?? null,
       })
     } else {
       form.reset({
@@ -117,6 +136,10 @@ export function FlatFormDialog({
         area: undefined,
         bedrooms: undefined,
         bathrooms: undefined,
+        electricityBill: null,
+        gasBill: null,
+        internetBill: null,
+        waterBill: null,
       })
     }
   }, [flat, open, defaultFloor, form])
@@ -137,8 +160,8 @@ export function FlatFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className={cn(ownerSheetClass('sm:max-w-lg'), 'gap-4 overflow-y-auto p-4 sm:p-6')}>
+        <DialogHeader className="pr-8 text-left">
           <DialogTitle>{isEdit ? t('editFlat') : t('addFlat')}</DialogTitle>
           <DialogDescription>
             {isEdit ? t('editFlatDesc') : t('addFlatDesc')}
@@ -164,7 +187,7 @@ export function FlatFormDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
               <FormField
                 control={form.control}
                 name="floor"
@@ -304,7 +327,9 @@ export function FlatFormDialog({
               />
             </div>
 
-            <DialogFooter>
+            <UtilityBillFields control={form.control} variant="flat" />
+
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button
                 type="button"
                 variant="outline"

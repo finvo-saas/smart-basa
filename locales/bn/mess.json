@@ -189,6 +189,14 @@
     "bookSeat": "এই সিট বুক করুন",
     "preparingBook": "বুকিং খোলা হচ্ছে…",
     "loginHint": "প্রয়োজনে লগইন করুন — সরাসরি বুকিং পেজে যাবেন।",
+    "trustTitle": "বাসস্থান, নিরাপত্তা ও বিশ্বাস",
+    "trustBody": "এই স্কোর প্রকাশিত লিস্টিং থেকে আসে। রিভিউ ও পুরো বিবরণ সেই পেজে আছে।",
+    "viewListing": "পুরো লিস্টিং খুলুন",
+    "viewListingHint": "ছবি, রিভিউ ও পুরো বিবরণ",
+    "trustPending": "ভাড়াটেকে বাসস্থান, নিরাপত্তা ও বিশ্বাস স্কোর দেখাতে এই মেস মার্কেটপ্লেসে প্রকাশ করুন।",
+    "scoreLiving": "বাসস্থান",
+    "scoreSafety": "নিরাপত্তা",
+    "scoreTrust": "বিশ্বাস",
     "mealSystemTitle": "খাবার সিস্টেম",
     "mealSystemSubtitle": "আজকের মেনু, সাপ্তাহিক ক্যালেন্ডার ও গেস্ট মিলের দাম।",
     "mealsPerDay": "দিনে {count} বেলা",
@@ -214,7 +222,29 @@
     "loadShedding": "লোডশেডিং",
     "manualDetails": "অতিরিক্ত তথ্য",
     "yes": "হ্যাঁ",
-    "no": "না"
+    "no": "না",
+    "availabilityValues": {
+      "24_7": "২৪/৭",
+      "limited": "সীমিত সময়",
+      "frequent_problem": "ঘন ঘন সমস্যা"
+    },
+    "sourceValues": {
+      "wasa": "ওয়াসা",
+      "deep_tube_well": "ডিপ টিউবওয়েল",
+      "both": "ওয়াসা + টিউবওয়েল",
+      "other": "অন্যান্য"
+    },
+    "sheddingValues": {
+      "rare": "কম",
+      "moderate": "মাঝারি",
+      "frequent": "ঘন ঘন"
+    },
+    "scoreLabels": {
+      "Excellent": "চমৎকার",
+      "Reliable": "নির্ভরযোগ্য",
+      "Average": "মাঝারি",
+      "Unreliable": "অনির্ভরযোগ্য"
+    }
   },
   "hisab": {
     "loading": "মিল হিসাব লোড হচ্ছে…",

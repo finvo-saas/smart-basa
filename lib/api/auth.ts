@@ -73,11 +73,12 @@ function persistTokens(
 
 export async function startLogin(params: {
   phone: string
+  asAdmin?: boolean
 }): Promise<ApiResult<LoginStartResult>> {
   return apiRequest<LoginStartResult>('/auth/login/start/', {
     method: 'POST',
     auth: false,
-    body: { phone: params.phone },
+    body: { phone: params.phone, asAdmin: params.asAdmin ?? false },
   })
 }
 
@@ -99,6 +100,7 @@ export async function verifyOtp(params: {
   phone: string
   otp: string
   purpose?: 'login' | 'recover'
+  asAdmin?: boolean
 }): Promise<ApiResult<AuthSession>> {
   const result = await apiRequest<AuthSession>('/auth/otp/verify/', {
     method: 'POST',
@@ -107,6 +109,7 @@ export async function verifyOtp(params: {
       phone: params.phone,
       otp: params.otp,
       purpose: params.purpose ?? 'login',
+      asAdmin: params.asAdmin ?? false,
     },
   })
   if (result.ok) {

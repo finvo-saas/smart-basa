@@ -44,11 +44,11 @@ export function BookingCard({
         )}
 
         {/* Content */}
-        <div className="flex-1">
+          <div className="flex-1 min-w-0">
           <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <CardTitle className="text-lg">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <CardTitle className="break-words text-base sm:text-lg">
                   {booking.propertyName}
                 </CardTitle>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -174,11 +174,11 @@ export function BookingCard({
 
             {/* Actions */}
             {showActions && booking.status === 'pending' && (
-              <div className="flex gap-2 pt-2 border-t">
+              <div className="flex flex-col gap-2 border-t pt-2 min-[360px]:flex-row">
                 <Button
                   variant="default"
                   size="sm"
-                  className="flex-1"
+                  className="h-auto w-full whitespace-normal min-[360px]:flex-1"
                   onClick={() => onApprove?.(booking.id)}
                 >
                   <Check className="mr-2 h-4 w-4" />
@@ -187,7 +187,7 @@ export function BookingCard({
                 <Button
                   variant="destructive"
                   size="sm"
-                  className="flex-1"
+                  className="h-auto w-full whitespace-normal min-[360px]:flex-1"
                   onClick={() => onReject?.(booking.id)}
                 >
                   <XCircle className="mr-2 h-4 w-4" />
@@ -197,11 +197,11 @@ export function BookingCard({
             )}
 
             {!showActions && booking.status === 'pending' && (
-              <div className="flex gap-2 pt-2 border-t">
+              <div className="flex flex-col gap-2 border-t pt-2 min-[360px]:flex-row">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1"
+                  className="h-auto w-full whitespace-normal min-[360px]:flex-1"
                   onClick={() => onCancel?.(booking.id)}
                 >
                   <X className="mr-2 h-4 w-4" />
@@ -211,7 +211,7 @@ export function BookingCard({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
+                    className="h-auto w-full whitespace-normal min-[360px]:flex-1"
                     onClick={() => onViewDetails(booking)}
                   >
                     View Details

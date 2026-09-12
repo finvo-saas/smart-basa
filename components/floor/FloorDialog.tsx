@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ownerSheetClass,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { Floor, FloorFormData } from '@/types/floor'
+import { cn } from '@/lib/utils'
 
 const floorSchema = z.object({
   floorNumber: z.number().min(0, 'Floor number must be 0 or greater'),
@@ -79,8 +81,8 @@ export function FloorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className={cn(ownerSheetClass('sm:max-w-md'), 'gap-4 overflow-y-auto p-4 sm:p-6')}>
+        <DialogHeader className="pr-8 text-left">
           <DialogTitle>{floor ? 'Edit Floor' : 'Add New Floor'}</DialogTitle>
           <DialogDescription>
             {floor

@@ -59,11 +59,9 @@ export const ADMIN_ROLE_LABELS: Record<AdminRole, string> = {
   support: 'Support',
 }
 
-/** Demo admin phones → sub-role (digits only, no +) */
+/** Registered platform admin phones → sub-role (digits only, no +) */
 export const DEMO_ADMIN_PHONES: Record<string, AdminRole> = {
-  '8801711111111': 'super-admin',
-  '8801722222222': 'moderator',
-  '8801733333333': 'support',
+  '8801934856451': 'super-admin',
 }
 
 export function getAdminRoleForPhone(phone: string): AdminRole | null {

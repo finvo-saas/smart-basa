@@ -16,6 +16,9 @@ export async function createSavedSearch(
   search: Pick<SavedSearch, 'name' | 'filters' | 'isActive'> &
     Partial<SavedSearch>,
 ): Promise<ApiResult<SavedSearch>> {
+  if (!hasAuthTokens()) {
+    return { ok: false, error: 'Sign in to save a search.', code: 'UNAUTHORIZED' }
+  }
   return apiRequest<SavedSearch>('/saved-searches/', {
     method: 'POST',
     body: {
