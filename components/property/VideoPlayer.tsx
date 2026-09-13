@@ -83,7 +83,7 @@ export function VideoPlayer({
     <>
       <div
         ref={containerRef}
-        className="relative h-64 w-full overflow-hidden rounded-lg bg-black sm:h-80"
+        className="relative h-48 w-full overflow-hidden rounded-lg bg-black sm:h-80"
       >
         {/* Video Element */}
         <video
@@ -167,8 +167,8 @@ export function VideoPlayer({
 
       {/* Fullscreen Video Dialog */}
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 sm:p-0 bg-black border-none">
-          <div className="relative h-[95vh] w-full">
+        <DialogContent className="left-[50%] top-0 flex h-[100dvh] max-h-[100dvh] w-full max-w-full translate-x-[-50%] translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-black p-0 sm:top-[50%] sm:h-[90vh] sm:max-h-[90vh] sm:w-[calc(100%-2rem)] sm:max-w-5xl sm:translate-y-[-50%] sm:rounded-lg">
+          <div className="relative min-h-0 flex-1">
             <Button
               variant="ghost"
               size="icon"

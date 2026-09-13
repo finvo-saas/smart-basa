@@ -71,22 +71,19 @@
   }
 
   /*
-   * Select menus lock body scroll. That shifts the page left and clips the
-   * sticky header. Cancel the lock only while a select is open — dialogs stay locked.
+   * overflow-x: clip on html/body clips portaled menus (they mount on body).
+   * Unclip while a menu is open. Do not set position:static — that fights
+   * dialog scroll-lock and places Mark attendance dropdowns off screen.
    */
-  html body[data-scroll-locked][data-select-open] {
+  html:has(body[data-select-open]),
+  body[data-select-open] {
     overflow: visible !important;
-    position: static !important;
-    margin-right: 0 !important;
-    margin-left: 0 !important;
-    padding-right: 0 !important;
-    padding-left: 0 !important;
-    padding-top: 0 !important;
-    overscroll-behavior: auto !important;
   }
 
-  html body[data-select-open] header {
-    pointer-events: auto;
+  html body[data-select-open] [data-radix-popper-content-wrapper],
+  html body[data-select-open] [role='listbox'] {
+    pointer-events: auto !important;
+    z-index: 110;
   }
 
   :focus-visible {

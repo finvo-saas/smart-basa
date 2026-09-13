@@ -22,7 +22,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Plus, FileText, MessageSquare, Receipt } from 'lucide-react'
+import {
+  CalendarClock,
+  CreditCard,
+  FileText,
+  Megaphone,
+  MessageSquare,
+  Plus,
+  Receipt,
+} from 'lucide-react'
+import { QuickLinkGrid, type QuickLink } from '@/components/dashboard/owner/OwnerSection'
 import { fetchBuildings } from '@/lib/api/buildings'
 import { useMockQuery } from '@/hooks/useMockQuery'
 import { useOwnerFocus } from '@/hooks/useOwnerFocus'
@@ -35,7 +44,7 @@ export default function MyPropertiesPage() {
   const { hasVertical, hydrated, needsFocusSelection } = useOwnerFocus()
 
   const loadBuildings = useCallback(() => fetchBuildings(), [])
-  const { data: fetchedBuildings, refetch: refetchBuildings } =
+  const { data: fetchedBuildings, error: buildingsError, refetch: refetchBuildings } =
     useMockQuery(loadBuildings)
 
   const [localBuildings, setLocalBuildings] = useState<Building[] | null>(null)
@@ -115,37 +124,54 @@ export default function MyPropertiesPage() {
           </div>
         )}
 
-        <div className="mb-6 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:flex sm:flex-wrap">
-          <Button variant="outline" size="sm" className="h-auto w-full whitespace-normal" asChild>
-            <Link href="/subscription">{t('subscription')}</Link>
-          </Button>
-          <Button variant="outline" size="sm" className="h-auto w-full whitespace-normal" asChild>
-            <Link href="/bills">
-              <Receipt className="mr-2 h-4 w-4" />
-              {t('bills')}
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" className="h-auto w-full whitespace-normal" asChild>
-            <Link href="/notices">
-              <FileText className="mr-2 h-4 w-4" />
-              {t('notices')}
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" className="h-auto w-full whitespace-normal" asChild>
-            <Link href="/complaints">
-              <MessageSquare className="mr-2 h-4 w-4" />
-              {t('complaints')}
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" className="h-auto w-full whitespace-normal" asChild>
-            <Link href="/my-properties/bookings">{t('bookingRequests')}</Link>
-          </Button>
-          <Button variant="outline" size="sm" className="h-auto w-full whitespace-normal" asChild>
-            <Link href="/my-listings">{t('publicListings')}</Link>
-          </Button>
+        <div className="mb-6">
+          <QuickLinkGrid
+            links={[
+              {
+                title: t('subscription'),
+                subtitle: t('subscriptionHint'),
+                href: '/subscription',
+                icon: <CreditCard className="h-4 w-4" />,
+              },
+              {
+                title: t('bills'),
+                subtitle: t('billsHint'),
+                href: '/bills',
+                icon: <Receipt className="h-4 w-4" />,
+              },
+              {
+                title: t('notices'),
+                subtitle: t('noticesHint'),
+                href: '/notices',
+                icon: <FileText className="h-4 w-4" />,
+              },
+              {
+                title: t('complaints'),
+                subtitle: t('complaintsHint'),
+                href: '/complaints',
+                icon: <MessageSquare className="h-4 w-4" />,
+              },
+              {
+                title: t('bookingRequests'),
+                subtitle: t('bookingRequestsHint'),
+                href: '/my-properties/bookings',
+                icon: <CalendarClock className="h-4 w-4" />,
+              },
+              {
+                title: t('publicListings'),
+                subtitle: t('publicListingsHint'),
+                href: '/my-listings',
+                icon: <Megaphone className="h-4 w-4" />,
+              },
+            ] satisfies QuickLink[]}
+          />
         </div>
 
-        {buildings.length === 0 ? (
+        {buildingsError ? (
+          <EmptyState title={t('emptyTitle')} description={buildingsError}>
+            <Button onClick={() => refetchBuildings()}>{tc('tryAgain')}</Button>
+          </EmptyState>
+        ) : buildings.length === 0 ? (
           <EmptyState title={t('emptyTitle')} description={t('emptyDesc')}>
             <Button onClick={tryAddBuilding}>
               <Plus className="mr-2 h-4 w-4" />

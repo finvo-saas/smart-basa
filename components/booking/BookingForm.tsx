@@ -11,6 +11,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  ownerSheetClass,
 } from '@/components/ui/dialog'
 import {
   Form,
@@ -139,13 +140,13 @@ export function BookingForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className={cn(ownerSheetClass('sm:max-w-2xl'), 'gap-0')}>
+        <DialogHeader className="shrink-0 space-y-1 border-b px-4 pb-3 pr-12 pt-4 text-left sm:px-6 sm:pt-5">
+          <DialogTitle className="break-words text-lg leading-snug sm:text-xl">
             {property.instantBook ? 'Instant book' : 'Request to book'}{' '}
             {property.name}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="break-words">
             {property.instantBook
               ? `Confirm details to instantly reserve this ${property.type}. You will get an approved booking right away.`
               : `Send a booking request for this ${property.type}. The owner typically responds within 24–48 hours.`}
@@ -155,14 +156,14 @@ export function BookingForm({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-6"
+            className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6"
           >
             {/* Property Summary */}
-            <div className="rounded-lg border p-4 bg-muted/50">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-semibold">{property.name}</p>
-                  <p className="text-sm text-muted-foreground">
+            <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
+              <div className="flex flex-col gap-2 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
+                <div className="min-w-0">
+                  <p className="break-words font-semibold">{property.name}</p>
+                  <p className="break-words text-sm text-muted-foreground">
                     {property.area}, {property.city}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -182,8 +183,8 @@ export function BookingForm({
                     rent)
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-primary">
+                <div className="min-w-0 min-[420px]:text-right">
+                  <p className="break-all text-lg font-bold text-primary">
                     ৳{property.rent.toLocaleString()}/month
                   </p>
                   {property.mealIncluded && property.mealCost && (
@@ -402,17 +403,21 @@ export function BookingForm({
               </p>
             ) : null}
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="h-auto min-h-10 w-full whitespace-normal"
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                className="h-auto min-h-10 w-full whitespace-normal"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

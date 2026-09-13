@@ -68,7 +68,7 @@ function mapStatusToCode(status: number): ApiErrorCode {
   if (status === 403) return 'FORBIDDEN'
   if (status === 409) return 'CONFLICT'
   if (status === 400 || status === 422) return 'INVALID'
-  if (status === 501) return 'GATEWAY_TODO'
+  if (status === 429) return 'UNAVAILABLE'
   return 'UNKNOWN'
 }
 

@@ -143,7 +143,7 @@ export function ImageGallery({
     <>
       <div className="space-y-3">
         {/* Main Image with Zoom */}
-        <div className="relative h-64 w-full overflow-hidden rounded-lg bg-muted sm:h-80">
+        <div className="relative h-48 w-full overflow-hidden rounded-lg bg-muted sm:h-80">
           <div
             ref={imageRef}
             className={`relative h-full w-full transition-transform duration-300 origin-center ${
@@ -268,8 +268,8 @@ export function ImageGallery({
 
       {/* Fullscreen Slideshow */}
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 sm:p-0 bg-black/95 border-none">
-          <div className="relative h-[95vh] w-full">
+        <DialogContent className="left-[50%] top-0 flex h-[100dvh] max-h-[100dvh] w-full max-w-full translate-x-[-50%] translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-black/95 p-0 sm:top-[50%] sm:h-[90vh] sm:max-h-[90vh] sm:w-[calc(100%-2rem)] sm:max-w-5xl sm:translate-y-[-50%] sm:rounded-lg">
+          <div className="relative min-h-0 flex-1">
             <Button
               variant="ghost"
               size="icon"
