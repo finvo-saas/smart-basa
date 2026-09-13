@@ -36,20 +36,20 @@ export function RichTextEditor({
   minHeight = 160,
 }: RichTextEditorProps) {
   const ref = useRef<HTMLDivElement>(null)
-  const synced = useRef(false)
+  const setting = useRef(false)
 
   useEffect(() => {
     const el = ref.current
-    if (!el) return
-    if (!synced.current || el.innerHTML !== value) {
-      if (document.activeElement !== el) {
-        el.innerHTML = value || ''
-        synced.current = true
-      }
-    }
+    if (!el || document.activeElement === el) return
+    const next = value || ''
+    if (el.innerHTML === next) return
+    setting.current = true
+    el.innerHTML = next
+    setting.current = false
   }, [value])
 
   const emit = useCallback(() => {
+    if (setting.current) return
     const el = ref.current
     if (!el) return
     onChange(el.innerHTML)

@@ -111,12 +111,11 @@ export function EnhancedNoticeBoard({
     return new Date(notice.expiryDate) >= new Date()
   })
 
-  // Sort by priority and date
+  // Sort newest published first
   const sortedNotices = [...activeNotices].sort((a, b) => {
-    const priorityOrder = { high: 3, medium: 2, low: 1 }
-    const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
-    if (priorityDiff !== 0) return priorityDiff
-    return new Date(b.date).getTime() - new Date(a.date).getTime()
+    const aTime = new Date(a.createdAt || a.date).getTime()
+    const bTime = new Date(b.createdAt || b.date).getTime()
+    return bTime - aTime
   })
 
   const isAcknowledged = (notice: Notice) => {

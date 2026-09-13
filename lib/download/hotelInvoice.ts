@@ -19,7 +19,7 @@ function money(n: number) {
 export function buildHotelInvoiceHtml(data: HotelInvoiceData): string {
   const { hotel, room, booking, fees, guestName, guestPhone, guestEmail } = data
   return `<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"/><title>Invoice ${booking.id}</title>
+<html lang="en"><head><meta charset="utf-8"/><title>Invoice · ${hotel.name}</title>
 <style>
 body{font-family:system-ui,sans-serif;max-width:720px;margin:24px auto;padding:0 16px;color:#0f172a}
 h1{font-size:20px;margin:0} .muted{color:#64748b;font-size:13px}
@@ -30,7 +30,7 @@ td,th{padding:8px 0;border-bottom:1px solid #e2e8f0;text-align:left;font-size:14
 </style></head><body>
 <h1>${hotel.name}</h1>
 <p class="muted">Tax invoice / booking receipt · ${hotel.address}, ${hotel.area}, ${hotel.city}</p>
-<p class="muted">Invoice ID: ${booking.id} · Status: ${booking.paymentStatus}</p>
+<p class="muted">Status: ${booking.paymentStatus}</p>
 <p><strong>Guest:</strong> ${guestName}<br/>
 <strong>Phone:</strong> ${guestPhone}${guestEmail ? `<br/><strong>Email:</strong> ${guestEmail}` : ''}</p>
 <p><strong>Room:</strong> ${room.roomNumber} (${room.type})<br/>
@@ -66,7 +66,7 @@ export function buildHotelInvoicePdfBlob(data: HotelInvoiceData): Blob {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
   doc.setTextColor(100)
-  doc.text(`Invoice ${booking.id}`, m, y)
+  doc.text(`Invoice · ${hotel.name}`, m, y)
   doc.text(booking.paymentStatus.toUpperCase(), w - m, y, { align: 'right' })
   doc.setTextColor(0)
   y += 10
@@ -119,7 +119,9 @@ export function openHotelInvoicePdf(data: HotelInvoiceData): void {
   if (!tab) {
     const a = document.createElement('a')
     a.href = url
-    a.download = sanitizeFilename(`Invoice_${data.booking.id}.pdf`)
+    a.download = sanitizeFilename(
+      `Invoice_${data.hotel.name}_${data.booking.checkIn}.pdf`,
+    )
     a.click()
   }
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
@@ -128,10 +130,13 @@ export function openHotelInvoicePdf(data: HotelInvoiceData): void {
 export function downloadHotelInvoiceHtml(data: HotelInvoiceData): void {
   downloadHtml(
     buildHotelInvoiceHtml(data),
-    sanitizeFilename(`Invoice_${data.booking.id}.html`)
+    sanitizeFilename(`Invoice_${data.hotel.name}_${data.booking.checkIn}.html`)
   )
 }
 
 export function printHotelInvoice(data: HotelInvoiceData): void {
-  printHtml(buildHotelInvoiceHtml(data), `Invoice_${data.booking.id}`)
+  printHtml(
+    buildHotelInvoiceHtml(data),
+    `Invoice_${data.hotel.name}_${data.booking.checkIn}`,
+  )
 }

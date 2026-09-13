@@ -196,12 +196,18 @@ export const primaryNavItems: NavItem[] = [
     icon: UtensilsCrossed,
     roles: ['owner'],
     ownerVertical: 'mess',
-    matchPrefixes: ['/mess'],
+    matchPrefixes: ['/mess', '/my-properties/bookings'],
     children: [
       {
         labelKey: 'children.myMessOps',
         href: '/mess',
         descriptionKey: 'children.myMessOpsDesc',
+        ownerVertical: 'mess',
+      },
+      {
+        labelKey: 'children.seatRequests',
+        href: '/my-properties/bookings?scope=mess',
+        descriptionKey: 'children.seatRequestsDesc',
         ownerVertical: 'mess',
       },
       {
@@ -421,6 +427,12 @@ export const mobileUtilityLinks: MobileUtilityLink[] = [
     labelKey: 'utility.messages',
     href: '/messages',
     icon: MessageCircle,
+    roles: ['renter', 'owner', 'admin'],
+  },
+  {
+    labelKey: 'utility.notifications',
+    href: '/notifications',
+    icon: Bell,
     roles: ['renter', 'owner', 'admin'],
   },
   {

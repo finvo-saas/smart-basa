@@ -163,12 +163,11 @@ export default function HotelBookingPage() {
             </div>
             <Card className="text-left">
               <CardContent className="space-y-3 pt-6 text-sm">
-                <p>
-                  <strong>{t('book.bookingId')}</strong> {confirmed.id}
-                </p>
-                <p>
-                  <strong>{t('book.txn')}</strong> {confirmed.transactionId}
-                </p>
+                {confirmed.transactionId ? (
+                  <p>
+                    <strong>{t('book.txn')}</strong> {confirmed.transactionId}
+                  </p>
+                ) : null}
                 <p>
                   <strong>{t('book.checkIn')}:</strong> {confirmed.checkIn} (
                   {hotel.checkInTime})

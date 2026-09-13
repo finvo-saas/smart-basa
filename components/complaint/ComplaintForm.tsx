@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Upload, X } from 'lucide-react'
-import Image from 'next/image'
+import { Label } from '@/components/ui/label'
 import { getAcceptAttribute, validateFile } from '@/lib/security/file-upload'
 import { fetchMyTenancies } from '@/lib/api/buildings'
 import { fetchMyMessMemberships } from '@/lib/api/mess'
@@ -93,24 +93,32 @@ export function ComplaintForm({ onSubmit }: ComplaintFormProps) {
     ]).then(([tenancyRes, messRes]) => {
       const nextTenancies = tenancyRes.ok ? tenancyRes.data : []
       const nextMess = messRes.ok ? messRes.data : []
-      setTenancies(nextTenancies)
-      setMemberships(nextMess)
+      setTenancies(Array.isArray(nextTenancies) ? nextTenancies : [])
+      setMemberships(Array.isArray(nextMess) ? nextMess : [])
+      const firstTenancy = Array.isArray(nextTenancies) ? nextTenancies[0] : undefined
+      const firstMess = Array.isArray(nextMess) ? nextMess[0] : undefined
       const firstKey =
-        nextTenancies[0]
-          ? `building:${nextTenancies[0].building.id}:${nextTenancies[0].flat.id}`
-          : nextMess[0]
-            ? `mess:${nextMess[0].messId}`
+        firstTenancy?.building?.id && firstTenancy.flat?.id
+          ? `building:${firstTenancy.building.id}:${firstTenancy.flat.id}`
+          : firstMess?.messId
+            ? `mess:${firstMess.messId}`
             : ''
       if (firstKey) form.setValue('scopeKey', firstKey)
     })
   }, [form])
 
   const scopeOptions = useMemo((): ScopeOption[] => {
-    const opts: ScopeOption[] = tenancies.map(t => ({
-      key: `building:${t.building.id}:${t.flat.id}`,
-      label: `${t.building.name} · Flat ${t.flat.flatNumber}`,
-    }))
+    const opts: ScopeOption[] = tenancies.flatMap(t => {
+      if (!t.building?.id || !t.flat?.id) return []
+      return [
+        {
+          key: `building:${t.building.id}:${t.flat.id}`,
+          label: `${t.building.name} · Flat ${t.flat.flatNumber}`,
+        },
+      ]
+    })
     for (const m of memberships) {
+      if (!m.messId) continue
       opts.push({
         key: `mess:${m.messId}`,
         label: `Mess · ${m.messName || m.messId}`,
@@ -270,16 +278,16 @@ export function ComplaintForm({ onSubmit }: ComplaintFormProps) {
             />
 
             <div className="space-y-2">
-              <FormLabel>Image (Optional)</FormLabel>
+              <Label>Image (Optional)</Label>
               {preview ? (
                 <div className="relative">
                   <div className="relative h-48 w-full overflow-hidden rounded-lg border">
-                    <Image
+                    {/* Local data-URL preview; next/image cannot optimize blob sources. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={preview}
                       alt="Preview"
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="h-full w-full object-cover"
                     />
                   </div>
                   <Button

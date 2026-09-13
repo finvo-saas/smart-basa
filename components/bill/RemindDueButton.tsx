@@ -52,26 +52,30 @@ export function RemindDueButton({ bill, className, onReminded }: Props) {
   }
 
   return (
-    <div className={cn('flex w-full flex-col gap-2 sm:flex-row', className)}>
+    <div className={cn('flex w-full min-w-0 flex-col gap-2', className)}>
       <Button
         type="button"
         variant="secondary"
-        className="flex-1"
+        className="h-auto min-h-10 w-full whitespace-normal px-3 py-2"
         disabled={loading !== null}
         onClick={() => void handleRemind('whatsapp')}
       >
-        <MessageCircle className="mr-2 h-4 w-4 text-[#25D366]" />
-        {loading === 'whatsapp' ? t('preparing') : t('whatsapp')}
+        <MessageCircle className="mr-2 h-4 w-4 shrink-0 text-[#25D366]" />
+        <span className="text-center leading-snug">
+          {loading === 'whatsapp' ? t('preparing') : t('whatsapp')}
+        </span>
       </Button>
       <Button
         type="button"
         variant="outline"
-        className="flex-1"
+        className="h-auto min-h-10 w-full whitespace-normal px-3 py-2"
         disabled={loading !== null}
         onClick={() => void handleRemind('sms')}
       >
-        <Bell className="mr-2 h-4 w-4" />
-        {loading === 'sms' ? t('sendingSms') : t('sms')}
+        <Bell className="mr-2 h-4 w-4 shrink-0" />
+        <span className="text-center leading-snug">
+          {loading === 'sms' ? t('sendingSms') : t('sms')}
+        </span>
       </Button>
     </div>
   )

@@ -98,10 +98,6 @@ export function UserDetailsDialog({
                   : '—'}
               </p>
             </div>
-            <div>
-              <p className="text-muted-foreground">User ID</p>
-              <p className="break-all font-mono text-xs">{user.id}</p>
-            </div>
           </div>
 
           <div className="border-t" />

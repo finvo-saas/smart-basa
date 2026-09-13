@@ -23,16 +23,19 @@ import { Plus, Search, Trash2, CheckCircle2, Pencil } from 'lucide-react'
 import {
   fetchAllNotices,
   fetchMessList,
+  fetchMyMessMemberships,
   createNotice,
   patchNotice,
   removeNotice,
   acknowledgeMessNotice,
 } from '@/lib/api/mess'
 import { createBuildingNotice, removeBuildingNotice } from '@/lib/api/buildingNotices'
-import { fetchBuildings } from '@/lib/api/buildings'
+import { fetchBuildings, fetchMyTenancies } from '@/lib/api/buildings'
+import { ok } from '@/lib/api/http'
 import { getCurrentAccountUserId } from '@/lib/api/account'
 import { uploadMediaFile, uploadMediaFiles } from '@/lib/api/media'
 import { useMockQuery } from '@/hooks/useMockQuery'
+import { useOwnerFocus } from '@/hooks/useOwnerFocus'
 import { getStoredRole } from '@/utils/auth'
 import type { Notice } from '@/types/mess'
 import { format } from 'date-fns'
@@ -53,18 +56,74 @@ export default function NoticesPage() {
   const tc = useTranslations('common')
   const role = getStoredRole()
   const isOwner = role === 'owner'
+  const { hydrated, hasVertical } = useOwnerFocus()
   const currentUserId = getCurrentAccountUserId()
 
   // Unified feed now returns mess + building (+ hotel) from ops.Notice
   const loadNotices = useCallback(() => fetchAllNotices(), [])
   const { data: initialNotices, refetch: refetchNotices } =
     useMockQuery(loadNotices)
-  const loadMesses = useCallback(() => fetchMessList(), [])
+  const loadMesses = useCallback(() => {
+    if (!isOwner) return Promise.resolve(ok([]))
+    return fetchMessList({ mine: true })
+  }, [isOwner])
   const { data: messList } = useMockQuery(loadMesses)
   const messes = messList ?? []
-  const loadBuildings = useCallback(() => fetchBuildings(), [])
+  const loadBuildings = useCallback(() => {
+    if (!isOwner) return Promise.resolve(ok([]))
+    return fetchBuildings()
+  }, [isOwner])
   const { data: buildingList } = useMockQuery(loadBuildings)
   const buildings = buildingList ?? []
+  const loadOccupied = useCallback(async () => {
+    if (isOwner) {
+      return ok({
+        messes: [] as { id: string; name: string }[],
+        buildings: [] as { id: string; name: string }[],
+      })
+    }
+    const [messResult, tenancyResult] = await Promise.all([
+      fetchMyMessMemberships(),
+      fetchMyTenancies('active'),
+    ])
+    const occupiedMesses = (messResult.ok ? messResult.data : [])
+      .filter(member => member.isActive !== false && !member.leftDate && member.messId)
+      .map(member => ({
+        id: member.messId,
+        name: member.messName || 'Mess',
+      }))
+    const occupiedBuildings = new Map<string, { id: string; name: string }>()
+    for (const tenancy of tenancyResult.ok ? tenancyResult.data : []) {
+      if (tenancy.status && tenancy.status !== 'active') continue
+      const building = tenancy.building
+      if (!building?.id || occupiedBuildings.has(building.id)) continue
+      const flat = tenancy.flat?.flatNumber
+      occupiedBuildings.set(building.id, {
+        id: building.id,
+        name: flat ? `${building.name} · Flat ${flat}` : building.name,
+      })
+    }
+    const uniqueMesses = [
+      ...new Map(occupiedMesses.map(item => [item.id, item])).values(),
+    ]
+    return ok({
+      messes: uniqueMesses,
+      buildings: [...occupiedBuildings.values()],
+    })
+  }, [isOwner])
+  const { data: occupied } = useMockQuery(loadOccupied)
+  const showMess = !isOwner || (hydrated && hasVertical('mess'))
+  const showApartment = !isOwner || (hydrated && hasVertical('apartment'))
+  const visibleMesses = isOwner
+    ? showMess
+      ? messes
+      : []
+    : occupied?.messes ?? []
+  const visibleBuildings = isOwner
+    ? showApartment
+      ? buildings
+      : []
+    : occupied?.buildings ?? []
 
   const [notices, setNotices] = useState<Notice[]>([])
   useEffect(() => {
@@ -77,6 +136,29 @@ export default function NoticesPage() {
       )
     }
   }, [initialNotices])
+
+  const scopedNotices = useMemo(() => {
+    if (isOwner) {
+      if (!hydrated) return notices
+      return notices.filter(notice => {
+        const building = isBuildingNotice(notice)
+        const hotel = notice.scopeType === 'hotel' || notice.source === 'hotel'
+        if (building) return hasVertical('apartment')
+        if (hotel) return hasVertical('hotel')
+        return hasVertical('mess')
+      })
+    }
+    if (!occupied) return notices
+    const messIds = new Set(occupied.messes.map(item => item.id))
+    const buildingIds = new Set(occupied.buildings.map(item => item.id))
+    return notices.filter(notice => {
+      if (isBuildingNotice(notice)) {
+        return buildingIds.has(String(notice.buildingId || notice.scopeId || ''))
+      }
+      if (notice.scopeType === 'hotel' || notice.source === 'hotel') return false
+      return messIds.has(String(notice.messId || notice.scopeId || ''))
+    })
+  }, [notices, isOwner, hydrated, hasVertical, occupied])
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingNotice, setEditingNotice] = useState<Notice | null>(null)
   const [isBulkNoticeDialogOpen, setIsBulkNoticeDialogOpen] = useState(false)
@@ -86,9 +168,16 @@ export default function NoticesPage() {
   const [priorityFilter, setPriorityFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedScope, setSelectedScope] = useState<string>('all')
+  useEffect(() => {
+    if (selectedScope === 'all') return
+    const allowed =
+      (selectedScope.startsWith('mess:') && showMess) ||
+      (selectedScope.startsWith('building:') && showApartment)
+    if (!allowed) setSelectedScope('all')
+  }, [selectedScope, showMess, showApartment])
 
   const filteredNotices = useMemo(() => {
-    return notices.filter(notice => {
+    return scopedNotices.filter(notice => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
         if (
@@ -125,8 +214,13 @@ export default function NoticesPage() {
       }
       return true
     })
+    .sort((a, b) => {
+      const aTime = new Date(a.createdAt || a.date).getTime()
+      const bTime = new Date(b.createdAt || b.date).getTime()
+      return bTime - aTime
+    })
   }, [
-    notices,
+    scopedNotices,
     searchQuery,
     categoryFilter,
     priorityFilter,
@@ -295,7 +389,7 @@ export default function NoticesPage() {
   }
 
   const canCreate =
-    isOwner && (messes.length > 0 || buildings.length > 0)
+    isOwner && (visibleMesses.length > 0 || visibleBuildings.length > 0)
 
   return (
     <Layout>
@@ -320,7 +414,7 @@ export default function NoticesPage() {
                 <Plus className="mr-2 h-4 w-4" />
                 {t('createNotice')}
               </Button>
-              {messes.length > 0 && (
+              {visibleMesses.length > 0 && (
                 <>
                   <Button
                     onClick={() => setIsBulkNoticeDialogOpen(true)}
@@ -365,13 +459,15 @@ export default function NoticesPage() {
                   <SelectValue placeholder={t('selectMess')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t('allScopes')}</SelectItem>
-                  {messes.map(mess => (
+                  <SelectItem value="all">
+                    {isOwner ? t('allScopes') : t('myPlaces')}
+                  </SelectItem>
+                  {visibleMesses.map(mess => (
                     <SelectItem key={`mess:${mess.id}`} value={`mess:${mess.id}`}>
                       {mess.name}
                     </SelectItem>
                   ))}
-                  {buildings.map(building => (
+                  {visibleBuildings.map(building => (
                     <SelectItem
                       key={`building:${building.id}`}
                       value={`building:${building.id}`}
@@ -474,7 +570,7 @@ export default function NoticesPage() {
                     ? notice.buildingName ||
                       notice.scopeName ||
                       t('buildingNotice')
-                    : messes.find(m => m.id === notice.messId)?.name ||
+                    : visibleMesses.find(m => m.id === notice.messId)?.name ||
                       notice.scopeName ||
                       t('messNotice')
 
@@ -565,13 +661,13 @@ export default function NoticesPage() {
               setIsCreateDialogOpen(open)
               if (!open) setEditingNotice(null)
             }}
-            messes={messes.map(m => ({ id: m.id, name: m.name }))}
-            buildings={buildings.map(b => ({ id: b.id, name: b.name }))}
+            messes={visibleMesses.map(m => ({ id: m.id, name: m.name }))}
+            buildings={visibleBuildings.map(b => ({ id: b.id, name: b.name }))}
             notice={editingNotice}
             defaultTargetId={
               selectedScope !== 'all'
                 ? selectedScope.split(':')[1]
-                : messes[0]?.id || buildings[0]?.id
+                : visibleBuildings[0]?.id || visibleMesses[0]?.id
             }
             onSubmit={handleCreateNotice}
           />

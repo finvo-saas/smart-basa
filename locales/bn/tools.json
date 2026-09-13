@@ -6,7 +6,9 @@
     "allCaughtUp": "আপনি সব দেখেছেন!",
     "emptyTitle": "কোনো বিজ্ঞপ্তি নেই",
     "emptyDesc": "আপনি সব দেখেছেন! নতুন বিজ্ঞপ্তি এখানে দেখাবে।",
-    "markAllRead": "সব পড়া চিহ্নিত"
+    "markAllRead": "সব পড়া চিহ্নিত",
+    "markRead": "পড়া হয়েছে",
+    "new": "নতুন"
   },
   "complaints": {
     "title": "অভিযোগ",
@@ -40,6 +42,7 @@
     "bulkNoticeSuccess": "গণ নোটিশ {target} প্রাপককে পাঠানো হয়েছে",
     "published": "নোটিশ প্রকাশিত হয়েছে",
     "allScopes": "সব সম্পত্তি",
+    "myPlaces": "আমার জায়গা",
     "buildingNotice": "বিল্ডিং",
     "messNotice": "মেস",
     "bulkSmsSuccess": "গণ এসএমএস {target} প্রাপককে পাঠানো হয়েছে",

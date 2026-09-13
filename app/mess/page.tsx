@@ -202,6 +202,11 @@ export default function MessOverviewPage() {
                 <Link href="/media">My photos</Link>
               </Button>
               <Button variant="outline" asChild>
+                <Link href="/my-properties/bookings?scope=mess">
+                  Seat requests
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
                 <Link href="/mess/student-dashboard">
                   <GraduationCap className="mr-2 h-4 w-4" />
                   {t('overview.previewStudentView')}

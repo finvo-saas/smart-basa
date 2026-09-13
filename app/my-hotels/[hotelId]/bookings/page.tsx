@@ -16,7 +16,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Calendar, Users, Phone, Mail, Check, X } from 'lucide-react'
-import { fetchHotelById, fetchHotelBookings } from '@/lib/api/hotels'
+import {
+  fetchHotelBookings,
+  fetchHotelById,
+  patchHotelBookingStatus,
+} from '@/lib/api/hotels'
 import { useMockQuery } from '@/hooks/useMockQuery'
 import { format } from 'date-fns'
 import type { Booking, BookingStatus } from '@/types/hotel'
@@ -43,7 +47,7 @@ export default function BookingManagementPage() {
   const { data: hotel } = useMockQuery(loadHotel)
 
   const loadBookings = useCallback(() => fetchHotelBookings(hotelId), [hotelId])
-  const { data: allBookings } = useMockQuery(loadBookings)
+  const { data: allBookings, refetch: refetchBookings } = useMockQuery(loadBookings)
 
   const [statusFilter, setStatusFilter] = useState<BookingStatus | 'all'>('all')
 
@@ -68,6 +72,12 @@ export default function BookingManagementPage() {
       title: t('bookings.changeStatusTitle', { status: newStatus }),
     })
     if (!ok) return
+    const result = await patchHotelBookingStatus(bookingId, newStatus)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    await refetchBookings()
     toast.success(t('bookings.statusUpdated'))
   }
 
@@ -165,7 +175,6 @@ export default function BookingManagementPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>{t('bookings.columns.bookingId')}</TableHead>
                       <TableHead>{t('bookings.columns.guest')}</TableHead>
                       <TableHead>{t('bookings.columns.room')}</TableHead>
                       <TableHead>{t('bookings.columns.checkIn')}</TableHead>
@@ -179,9 +188,6 @@ export default function BookingManagementPage() {
                   <TableBody>
                     {bookings.map(booking => (
                       <TableRow key={booking.id}>
-                        <TableCell className="font-mono text-xs">
-                          {booking.id}
-                        </TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{booking.guestName}</p>
@@ -197,7 +203,9 @@ export default function BookingManagementPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {t('bookings.roomLabel', { id: booking.roomId })}
+                          {booking.roomNumber
+                            ? t('book.roomLabel', { number: booking.roomNumber })
+                            : t('bookings.columns.room')}
                         </TableCell>
                         <TableCell>
                           {format(new Date(booking.checkIn), 'MMM dd, yyyy')}

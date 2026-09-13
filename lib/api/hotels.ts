@@ -128,6 +128,16 @@ export async function fetchUserHotelBookings(
   return apiRequest<Booking[]>('/hotels/bookings/mine/')
 }
 
+export async function patchHotelBookingStatus(
+  bookingId: string,
+  status: Booking['status'],
+): Promise<ApiResult<Booking>> {
+  return apiRequest<Booking>(`/hotels/bookings/${bookingId}/status/`, {
+    method: 'PATCH',
+    body: { status },
+  })
+}
+
 export async function createHotelBooking(
   booking: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'> & {
     id?: string

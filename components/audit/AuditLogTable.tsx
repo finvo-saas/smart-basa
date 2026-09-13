@@ -99,9 +99,6 @@ export function AuditLogTable({
                   <p className="font-medium text-sm truncate">
                     {log.entityName}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    ID: {log.entityId}
-                  </p>
                 </div>
               </TableCell>
               <TableCell>

@@ -128,7 +128,6 @@ export function BookingDetailDialog({
                 'Request to book'
               )}
             </Badge>
-            <Badge variant="secondary">ID: {booking.id}</Badge>
           </div>
 
           <div className="space-y-2 text-sm">
@@ -267,7 +266,7 @@ export function BookingDetailDialog({
               onCancel && (
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="h-11 flex-1 px-4"
                   onClick={() => onCancel(booking)}
                 >
                   <Ban className="mr-2 h-4 w-4" />
@@ -277,7 +276,7 @@ export function BookingDetailDialog({
             {isOwner && booking.status === 'pending' && (
               <>
                 <Button
-                  className="flex-1"
+                  className="h-11 flex-1 px-4"
                   onClick={() => onApprove?.(booking)}
                 >
                   <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -285,7 +284,7 @@ export function BookingDetailDialog({
                 </Button>
                 <Button
                   variant="destructive"
-                  className="flex-1"
+                  className="h-11 flex-1 px-4"
                   onClick={() => onReject?.(booking)}
                 >
                   <XCircle className="mr-2 h-4 w-4" />

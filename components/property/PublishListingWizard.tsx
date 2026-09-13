@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import Image from 'next/image'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -111,7 +111,13 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-const STEPS = ['Basics', 'Details', 'Photos & publish']
+const STEPS = ['Basics', 'Details', 'Photos'] as const
+
+const STEP_HINTS = [
+  'Name, rent, and location. Nothing is published yet.',
+  'Rooms, bills, and description. Continue saves nothing — photos are next.',
+  'Add photos, then save. The listing is published only if you turn that on.',
+]
 
 function selectableFlats(flats: Flat[], listingId?: string) {
   return flats.filter(
@@ -269,9 +275,29 @@ export function PublishListingWizard({
     return false
   }
 
-  const next = async () => {
+  const revealStepError = () => {
+    requestAnimationFrame(() => {
+      document
+        .querySelector('[aria-invalid="true"]')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }
+
+  const next = async (event?: { preventDefault?: () => void }) => {
+    event?.preventDefault?.()
+    setError(null)
     const ok = await validateStep()
-    if (ok) setStep(s => Math.min(s + 1, STEPS.length - 1))
+    if (!ok) {
+      setError('Fix the highlighted fields, then continue. Your listing is not saved yet.')
+      revealStepError()
+      return
+    }
+    setStep(current => Math.min(current + 1, STEPS.length - 1))
+    requestAnimationFrame(() => {
+      document
+        .getElementById('listing-wizard')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 
   const handleFinal = form.handleSubmit(async values => {
@@ -361,8 +387,18 @@ export function PublishListingWizard({
     }
   })
 
+  const onFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    // Enter in a field used to submit this form and save/leave the page.
+    if (step < STEPS.length - 1) {
+      void next()
+      return
+    }
+    void handleFinal(event)
+  }
+
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div id="listing-wizard" className="mx-auto max-w-2xl space-y-6">
       <div className="flex gap-2">
         {STEPS.map((label, i) => (
           <div key={label} className="flex flex-1 flex-col items-center gap-1">
@@ -378,7 +414,14 @@ export function PublishListingWizard({
             >
               {i < step ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
             </div>
-            <span className="text-center text-xs text-muted-foreground">
+            <span
+              className={cn(
+                'text-center text-xs',
+                i === step
+                  ? 'font-medium text-foreground'
+                  : 'text-muted-foreground',
+              )}
+            >
               {label}
             </span>
           </div>
@@ -387,11 +430,18 @@ export function PublishListingWizard({
 
       <Card>
         <CardHeader>
-          <CardTitle>{STEPS[step]}</CardTitle>
+          <CardTitle>
+            Step {step + 1} of {STEPS.length} · {STEPS[step]}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">{STEP_HINTS[step]}</p>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={handleFinal} className="space-y-4">
+            <form
+              noValidate
+              onSubmit={onFormSubmit}
+              className="space-y-4"
+            >
               {step === 0 && (
                 <>
                   <FormField
@@ -1237,8 +1287,14 @@ export function PublishListingWizard({
                 )}
                 <div className="flex-1" />
                 {step < STEPS.length - 1 ? (
-                  <Button type="button" onClick={next}>
-                    Continue
+                  <Button
+                    type="button"
+                    onClick={event => {
+                      event.preventDefault()
+                      void next()
+                    }}
+                  >
+                    {step === 1 ? 'Continue to photos' : 'Continue'}
                   </Button>
                 ) : (
                   <Button type="submit" disabled={submitting}>

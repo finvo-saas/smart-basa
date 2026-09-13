@@ -71,11 +71,6 @@ export default function RentalsPage() {
           }
         />
 
-        <p className="mb-6 text-xs text-muted-foreground">
-          {t('demoRenterId')}{' '}
-          <code className="rounded bg-muted px-1.5 py-0.5">{renterId}</code>
-        </p>
-
         {loading && (
           <LoadingState label={t('loading')} variant="skeleton" skeletonVariant="row" />
         )}

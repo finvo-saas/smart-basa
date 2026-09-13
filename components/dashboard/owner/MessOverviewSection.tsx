@@ -24,6 +24,7 @@ import {
 import { useMockQuery } from '@/hooks/useMockQuery'
 import { useAppFormat } from '@/hooks/useAppFormat'
 import { fetchAllNotices, fetchMessList } from '@/lib/api/mess'
+import { fetchBookingsForOwner } from '@/lib/api/bookings'
 import { getOwnerSMSWallet } from '@/lib/api/messDomain'
 import { ok } from '@/lib/api/http'
 import type { OwnerSMSWallet } from '@/types/sms'
@@ -32,16 +33,25 @@ export function MessOverviewSection() {
   const { formatCurrency, formatNumber } = useAppFormat()
 
   const load = useCallback(async () => {
-    const [messResult, noticeResult, wallet] = await Promise.all([
+    const [messResult, noticeResult, wallet, bookingResult] = await Promise.all([
       fetchMessList({ mine: true }),
       fetchAllNotices(),
       getOwnerSMSWallet(),
+      fetchBookingsForOwner(),
     ])
     if (!messResult.ok) return messResult
+    const seatRequests = bookingResult.ok
+      ? bookingResult.data.filter(
+          booking =>
+            (booking.propertyType === 'mess' || booking.propertyType === 'hostel') &&
+            booking.status === 'pending',
+        )
+      : []
     return ok({
       messes: messResult.data,
       notices: noticeResult.ok ? noticeResult.data : [],
       wallet: (wallet ?? null) as OwnerSMSWallet | null,
+      pendingRequests: seatRequests.length,
     })
   }, [])
   const { data } = useMockQuery(load)
@@ -49,6 +59,7 @@ export function MessOverviewSection() {
   const messes = data?.messes ?? []
   const notices = data?.notices ?? []
   const wallet = data?.wallet ?? null
+  const pendingRequests = data?.pendingRequests ?? 0
   const singleMessId = messes.length === 1 ? messes[0].id : null
 
   const stats = useMemo(() => {
@@ -79,6 +90,15 @@ export function MessOverviewSection() {
   )
 
   const links: QuickLink[] = [
+    {
+      title: 'Seat requests',
+      subtitle:
+        pendingRequests === 1
+          ? '1 renter waiting for a seat'
+          : `${pendingRequests} renters waiting for a seat`,
+      href: '/my-properties/bookings?scope=mess',
+      icon: <ClipboardList className="h-4 w-4" />,
+    },
     {
       title: 'Messes & seats',
       subtitle: 'Seat map, renters, live status',
@@ -144,6 +164,13 @@ export function MessOverviewSection() {
       openLabel="Open mess"
     >
       <StatGrid>
+        <StatCard
+          label="Seat requests"
+          value={formatNumber(pendingRequests)}
+          hint={pendingRequests ? 'Waiting for your decision' : 'No pending requests'}
+          href="/my-properties/bookings?scope=mess"
+          icon={<ClipboardList className="h-6 w-6" />}
+        />
         <StatCard
           label="My messes"
           value={formatNumber(messes.length)}

@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/popover'
 import {
   CalendarIcon,
+  Loader2,
   Upload,
   X,
   FileText,
@@ -84,7 +85,7 @@ interface CreateNoticeDialogProps {
       targetId: string
       noticeId?: string
     },
-  ) => void
+  ) => void | Promise<void>
 }
 
 const categoryOptions = [
@@ -112,22 +113,36 @@ export function CreateNoticeDialog({
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [pdfPreview, setPdfPreview] = useState<string | undefined>()
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [submitting, setSubmitting] = useState(false)
 
+  const onlyBuildings = buildings.length > 0 && messes.length === 0
+  const onlyMesses = messes.length > 0 && buildings.length === 0
   const targetOptions = [
     ...messes.map(m => ({
       value: `mess:${m.id}`,
-      label: `Mess · ${m.name}`,
+      label: onlyMesses ? m.name : `Mess · ${m.name}`,
     })),
     ...buildings.map(b => ({
       value: `building:${b.id}`,
-      label: `Building · ${b.name}`,
+      label: onlyBuildings ? b.name : `Building · ${b.name}`,
     })),
   ]
+  const targetPlaceholder = onlyBuildings
+    ? 'Select apartment'
+    : onlyMesses
+      ? 'Select mess'
+      : 'Select mess or building'
+  const targetHint = onlyBuildings
+    ? 'Publish a notice to tenants in your apartment'
+    : onlyMesses
+      ? 'Publish a notice to renters in a mess'
+      : 'Publish a notice to tenants in a mess or building'
   const initialTarget =
     (defaultTargetId &&
       targetOptions.find(o => o.value.endsWith(`:${defaultTargetId}`))
         ?.value) ||
-    (messId ? `mess:${messId}` : targetOptions[0]?.value) ||
+    (messId && messes.some(m => m.id === messId) ? `mess:${messId}` : '') ||
+    targetOptions[0]?.value ||
     ''
   const [targetValue, setTargetValue] = useState(initialTarget)
   const form = useForm<NoticeFormData>({
@@ -210,34 +225,46 @@ export function CreateNoticeDialog({
     e.target.value = ''
   }
 
-  const handleFormSubmit = (data: NoticeFormData) => {
+  const handleFormSubmit = async (data: NoticeFormData) => {
+    if (submitting) return
     const [targetType, targetId] = (targetValue || '').split(':') as [
       'mess' | 'building',
       string,
     ]
     if (!targetId) {
-      toast.error('Select a mess or building')
+      toast.error(onlyBuildings ? 'Select an apartment' : onlyMesses ? 'Select a mess' : 'Select a mess or building')
       return
     }
-    onSubmit({
-      ...data,
-      pdfFile,
-      imageFiles: imageFiles.length ? imageFiles : undefined,
-      targetType,
-      targetId,
-      noticeId: notice?.id,
-    })
+    setSubmitting(true)
+    try {
+      await onSubmit({
+        ...data,
+        pdfFile,
+        imageFiles: imageFiles.length ? imageFiles : undefined,
+        targetType,
+        targetId,
+        noticeId: notice?.id,
+      })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={next => {
+        if (submitting) return
+        onOpenChange(next)
+      }}
+    >
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Notice' : 'Create Notice'}</DialogTitle>
           <DialogDescription>
             {isEdit
               ? 'Update notice content, priority, and expiry'
-              : 'Publish a notice to tenants in a mess or building'}
+              : targetHint}
           </DialogDescription>
         </DialogHeader>
 
@@ -251,7 +278,7 @@ export function CreateNoticeDialog({
                 <Label>Target</Label>
                 <Select value={targetValue} onValueChange={setTargetValue}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select mess or building" />
+                    <SelectValue placeholder={targetPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
                     {targetOptions.map(opt => (
@@ -457,12 +484,22 @@ export function CreateNoticeDialog({
               <Button
                 type="button"
                 variant="outline"
+                disabled={submitting}
                 onClick={() => onOpenChange(false)}
               >
                 Cancel
               </Button>
-              <Button type="submit">
-                {isEdit ? 'Save changes' : 'Publish notice'}
+              <Button type="submit" disabled={submitting}>
+                {submitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                {submitting
+                  ? isEdit
+                    ? 'Saving…'
+                    : 'Publishing…'
+                  : isEdit
+                    ? 'Save changes'
+                    : 'Publish notice'}
               </Button>
             </div>
           </form>

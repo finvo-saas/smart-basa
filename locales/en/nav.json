@@ -29,6 +29,8 @@
     "myMessOpsDesc": "Seats, meals, attendance, and renters",
     "addMess": "Add mess / hostel",
     "addMessDesc": "Create a new mess profile and seats",
+    "seatRequests": "Seat requests",
+    "seatRequestsDesc": "Approve or reject renter seat requests",
     "bills": "Bills",
     "billsDesc": "View and pay rent invoices",
     "payments": "Payments",
@@ -91,6 +93,7 @@
   },
   "utility": {
     "messages": "Messages",
+    "notifications": "Notifications",
     "favorites": "Favorites",
     "searchHistory": "Search history",
     "savedSearches": "Saved searches",

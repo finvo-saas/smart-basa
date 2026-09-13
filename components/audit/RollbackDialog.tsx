@@ -48,8 +48,8 @@ export function RollbackDialog({
             </p>
             <div className="rounded-lg border p-3 bg-muted/30">
               <p className="font-medium text-sm mb-1">{log.entityName}</p>
-              <p className="text-xs text-muted-foreground">
-                {log.entityType} • ID: {log.entityId}
+              <p className="text-xs capitalize text-muted-foreground">
+                {log.entityType}
               </p>
             </div>
             {log.changes && log.changes.length > 0 && (

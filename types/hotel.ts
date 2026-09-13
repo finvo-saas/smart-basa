@@ -51,6 +51,7 @@ export interface Booking {
   id: string
   hotelId: string
   roomId: string
+  roomNumber?: string
   userId: string
   guestName: string
   guestPhone: string

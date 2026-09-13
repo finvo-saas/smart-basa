@@ -91,7 +91,7 @@ export default function NotificationsPage() {
             description={t('emptyDesc')}
           />
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 sm:space-y-2">
             {sortedNotifications.map(notification => (
               <NotificationCard
                 key={notification.id}

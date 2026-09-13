@@ -47,7 +47,7 @@ function statusLabel(status: Bill['status']): string {
 }
 
 export function getBillFilename(bill: Bill, ext: string): string {
-  const base = `Bill_${bill.propertyName}_${bill.month}_${bill.year}_${bill.id}`
+  const base = `Bill_${bill.propertyName}_${bill.month}_${bill.year}`
   return `${sanitizeFilename(base)}.${ext}`
 }
 
@@ -60,7 +60,6 @@ export function buildBillReceiptText(
     organizationName,
     'BILL / RENT RECEIPT',
     '========================================',
-    `Bill ID: ${bill.id}`,
     `Period: ${bill.month} ${bill.year}`,
     `Status: ${statusLabel(bill.status)}`,
     '',
@@ -227,7 +226,6 @@ export function buildBillReceiptHtml(
       </div>
       <div style="text-align:right">
         <div class="badge ${statusClass}">${statusLabel(bill.status)}</div>
-        <div class="meta" style="margin-top:8px">Bill ID: ${escapeHtml(bill.id)}</div>
       </div>
     </div>
 
@@ -323,10 +321,6 @@ export function buildBillReceiptPdfBlob(
   doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
   doc.text(status.toUpperCase(), pageWidth - margin, y, { align: 'right' })
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
-  doc.setTextColor(100)
-  doc.text(`Bill ID: ${bill.id}`, pageWidth - margin, y + 6, { align: 'right' })
   doc.setTextColor(0)
 
   y += 16

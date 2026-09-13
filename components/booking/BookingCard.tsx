@@ -32,13 +32,13 @@ export function BookingCard({
       <div className="flex flex-col sm:flex-row">
         {/* Image */}
         {booking.propertyImage && (
-          <div className="relative h-48 w-full sm:h-auto sm:w-48 shrink-0">
+          <div className="relative h-48 w-full shrink-0 sm:h-auto sm:w-64 lg:w-96 xl:w-[28rem]">
             <Image
               src={booking.propertyImage}
               alt={booking.propertyName}
               fill
               className="object-cover"
-              sizes="(max-width: 640px) 100vw, 192px"
+              sizes="(max-width: 639px) 100vw, (max-width: 1024px) 256px, (max-width: 1280px) 384px, 448px"
             />
           </div>
         )}
@@ -174,11 +174,9 @@ export function BookingCard({
 
             {/* Actions */}
             {showActions && booking.status === 'pending' && (
-              <div className="flex flex-col gap-2 border-t pt-2 min-[360px]:flex-row">
+              <div className="flex flex-col gap-3 border-t pt-3 sm:flex-row">
                 <Button
-                  variant="default"
-                  size="sm"
-                  className="h-auto w-full whitespace-normal min-[360px]:flex-1"
+                  className="h-11 w-full px-4 sm:flex-1"
                   onClick={() => onApprove?.(booking.id)}
                 >
                   <Check className="mr-2 h-4 w-4" />
@@ -186,8 +184,7 @@ export function BookingCard({
                 </Button>
                 <Button
                   variant="destructive"
-                  size="sm"
-                  className="h-auto w-full whitespace-normal min-[360px]:flex-1"
+                  className="h-11 w-full px-4 sm:flex-1"
                   onClick={() => onReject?.(booking.id)}
                 >
                   <XCircle className="mr-2 h-4 w-4" />
@@ -197,11 +194,10 @@ export function BookingCard({
             )}
 
             {!showActions && booking.status === 'pending' && (
-              <div className="flex flex-col gap-2 border-t pt-2 min-[360px]:flex-row">
+              <div className="flex flex-col gap-3 border-t pt-3 sm:flex-row">
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="h-auto w-full whitespace-normal min-[360px]:flex-1"
+                  className="h-11 w-full px-4 sm:flex-1"
                   onClick={() => onCancel?.(booking.id)}
                 >
                   <X className="mr-2 h-4 w-4" />
@@ -210,8 +206,7 @@ export function BookingCard({
                 {onViewDetails && (
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="h-auto w-full whitespace-normal min-[360px]:flex-1"
+                    className="h-11 w-full px-4 sm:flex-1"
                     onClick={() => onViewDetails(booking)}
                   >
                     View Details
@@ -223,11 +218,10 @@ export function BookingCard({
             {!showActions &&
               booking.status !== 'pending' &&
               onViewDetails && (
-                <div className="border-t pt-2">
+                <div className="border-t pt-3">
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="w-full"
+                    className="h-11 w-full px-4"
                     onClick={() => onViewDetails(booking)}
                   >
                     View details
@@ -238,11 +232,10 @@ export function BookingCard({
             {showActions &&
               booking.status !== 'pending' &&
               onViewDetails && (
-                <div className="border-t pt-2">
+                <div className="border-t pt-3">
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="w-full"
+                    className="h-11 w-full px-4"
                     onClick={() => onViewDetails(booking)}
                   >
                     View details

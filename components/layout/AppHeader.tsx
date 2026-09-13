@@ -8,6 +8,7 @@ import { useTheme } from '@/components/theme/ThemeProvider'
 import { LanguageSwitcher } from '@/components/i18n'
 import { Button } from '@/components/ui/button'
 import { NotificationBadge } from '@/components/chat/NotificationBadge'
+import { NotificationsBell } from '@/components/notification/NotificationsBell'
 import { SearchNotification } from '@/components/search/SearchNotification'
 import { UserAccountMenu } from '@/components/layout/UserAccountMenu'
 import { BrandIcon, BrandWordmark } from '@/components/layout/BrandLogo'
@@ -211,6 +212,7 @@ export function AppHeader() {
                   </Button>
                 )}
                 {messagesButton}
+                <NotificationsBell />
                 {themeButton}
                 <LanguageSwitcher variant="ghost" size="sm" />
                 <UserAccountMenu
@@ -270,6 +272,7 @@ export function AppHeader() {
                   )}
                 </div>
                 {messagesButton}
+                <NotificationsBell />
                 {themeButton}
                 <LanguageSwitcher
                   variant="ghost"

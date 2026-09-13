@@ -6,7 +6,9 @@
     "allCaughtUp": "All caught up!",
     "emptyTitle": "No notifications",
     "emptyDesc": "You're all caught up! New notifications will appear here.",
-    "markAllRead": "Mark all read"
+    "markAllRead": "Mark all read",
+    "markRead": "Mark as read",
+    "new": "New"
   },
   "complaints": {
     "title": "Complaints",
@@ -40,6 +42,7 @@
     "bulkNoticeSuccess": "Bulk notice sent to {target} recipients",
     "published": "Notice published",
     "allScopes": "All properties",
+    "myPlaces": "My places",
     "buildingNotice": "Building",
     "messNotice": "Mess",
     "bulkSmsSuccess": "Bulk SMS sent to {target} recipients",

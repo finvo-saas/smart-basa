@@ -60,33 +60,24 @@
     scrollbar-gutter: stable;
   }
 
+  /* Clip page overflow on the layout shell, not body — body clip hides portaled menus. */
   body {
-    @apply max-w-full overflow-x-clip bg-background text-foreground transition-colors duration-200;
-  }
-
-  /* With scrollbar-gutter:stable, Radix padding-right double-counts and shifts UI left. */
-  body[data-scroll-locked] {
-    margin-right: 0 !important;
-    padding-right: 0 !important;
+    @apply max-w-full bg-background text-foreground transition-colors duration-200;
   }
 
   /*
-   * overflow-x: clip on html/body clips portaled menus (they mount on body).
-   * Unclip while a menu is open. Do not set position:static — that fights
-   * dialog scroll-lock and places Mark attendance dropdowns off screen.
+   * Select/dialog scroll-lock injects margin-right !important after this file.
+   * scrollbar-gutter already reserves that space, so the extra margin shifts
+   * the page left until the menu closes. Higher specificity wins the override.
+   * Do not set position:static — that places dropdowns inside dialogs off screen.
    */
-  html:has(body[data-select-open]),
-  body[data-select-open] {
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
     overflow: visible !important;
   }
 
-  html body[data-select-open] [data-radix-popper-content-wrapper],
-  html body[data-select-open] [role='listbox'] {
-    pointer-events: auto !important;
-    z-index: 110;
-  }
-
-  :focus-visible {
+  :focus-visible:not([role='combobox']) {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 

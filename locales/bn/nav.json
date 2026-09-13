@@ -29,6 +29,8 @@
     "myMessOpsDesc": "সিট, খাবার, উপস্থিতি ও ভাড়াটিয়া",
     "addMess": "মেস / হোস্টেল যোগ",
     "addMessDesc": "নতুন মেস প্রোফাইল ও সিট তৈরি করুন",
+    "seatRequests": "সিট অনুরোধ",
+    "seatRequestsDesc": "ভাড়াটেদের সিট অনুরোধ অনুমোদন বা বাতিল",
     "bills": "বিল",
     "billsDesc": "ভাড়ার ইনভয়েস দেখুন ও পরিশোধ করুন",
     "payments": "পেমেন্ট",
@@ -91,6 +93,7 @@
   },
   "utility": {
     "messages": "বার্তা",
+    "notifications": "নোটিফিকেশন",
     "favorites": "পছন্দ",
     "searchHistory": "অনুসন্ধান ইতিহাস",
     "savedSearches": "সংরক্ষিত অনুসন্ধান",

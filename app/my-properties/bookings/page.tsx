@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Layout } from '@/components/layout/Layout'
 import {
@@ -52,6 +53,8 @@ import { Calendar, CheckCircle2, Clock, Plus } from 'lucide-react'
 export default function OwnerBookingsPage() {
   const t = useTranslations('portfolio.bookingRequests')
   const tc = useTranslations('common')
+  const scope = useSearchParams().get('scope')
+  const messScope = scope === 'mess'
   const [selectedStatus, setSelectedStatus] = useState<BookingStatus | 'all'>(
     'all'
   )
@@ -80,14 +83,18 @@ export default function OwnerBookingsPage() {
     }
   }, [tick])
 
-  const ownerBookings =
-    bookings?.filter(b =>
-      selectedStatus === 'all' ? true : b.status === selectedStatus
-    ) || []
+  const visibleBookings = (bookings || []).filter(booking =>
+    messScope
+      ? booking.propertyType === 'mess' || booking.propertyType === 'hostel'
+      : true,
+  )
+  const ownerBookings = visibleBookings.filter(b =>
+    selectedStatus === 'all' ? true : b.status === selectedStatus,
+  )
 
-  const pendingBookings = (bookings || []).filter(b => b.status === 'pending')
-  const approvedBookings = (bookings || []).filter(b => b.status === 'approved')
-  const allBookings = bookings || []
+  const pendingBookings = visibleBookings.filter(b => b.status === 'pending')
+  const approvedBookings = visibleBookings.filter(b => b.status === 'approved')
+  const allBookings = visibleBookings
 
   const refresh = () => {
     setTick(t => t + 1)
@@ -173,13 +180,13 @@ export default function OwnerBookingsPage() {
     <Layout>
       <PageContainer>
         <PageHeader
-          title={t('title')}
-          description={t('manageDesc')}
+          title={messScope ? t('seatTitle') : t('title')}
+          description={messScope ? t('seatDescription') : t('manageDesc')}
           actions={
             <Button asChild variant="outline">
-              <Link href="/my-listings">
+              <Link href={messScope ? '/mess' : '/my-listings'}>
                 <Plus className="mr-2 h-4 w-4" />
-                {t('manageListings')}
+                {messScope ? t('manageMess') : t('manageListings')}
               </Link>
             </Button>
           }

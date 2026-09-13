@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { useStoredRole } from '@/hooks/useStoredRole'
 import { Layout } from '@/components/layout/Layout'
@@ -118,10 +118,14 @@ export default function BillsPage() {
 
   const { ready, isOwner } = useStoredRole()
   const tenantId = getCurrentAccountUserId()
+  const loadSeq = useRef(0)
 
   const loadBoard = useCallback(async () => {
+    if (!ready) return
+    const seq = ++loadSeq.current
     if (!isOwner) {
       const result = await fetchBillsForTenant()
+      if (seq !== loadSeq.current) return
       if (result.ok) setBills(result.data)
       setBoardReady(true)
       return
@@ -131,6 +135,7 @@ export default function BillsPage() {
       fetchMessList({ mine: true }),
       fetchOwnerPortfolioSnapshot(),
     ])
+    if (seq !== loadSeq.current) return
     if (result.ok) {
       setBills(result.data.bills)
       setTemplates(result.data.templates)
@@ -157,7 +162,7 @@ export default function BillsPage() {
     setBuildings(buildings)
     setMessList([...messById.values()])
     setBoardReady(true)
-  }, [isOwner])
+  }, [isOwner, ready])
 
   const resolvePropertyName = useCallback(
     (propertyId: string, propertyType?: string) => {

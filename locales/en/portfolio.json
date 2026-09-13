@@ -192,9 +192,12 @@
   },
   "bookingRequests": {
     "title": "Booking requests",
+    "seatTitle": "Seat requests",
     "description": "Approve or reject renter booking requests for your properties.",
+    "seatDescription": "Approve or reject mess and hostel seat requests.",
     "manageDesc": "Approve, reject, and track bookings for your listings.",
     "manageListings": "Manage listings",
+    "manageMess": "Manage mess",
     "loading": "Loading requests…",
     "emptyPendingTitle": "No pending requests",
     "emptyPendingDesc": "New booking requests from renters will appear here.",

@@ -83,20 +83,10 @@ export function AuditLogDetailDialog({
               <h3 className="font-semibold mb-3 text-sm">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Log ID</p>
-                  <p className="text-sm font-mono">{log.id}</p>
-                </div>
-                <div>
                   <p className="text-xs text-muted-foreground mb-1">
                     Entity Type
                   </p>
                   <Badge variant="outline">{log.entityType}</Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    Entity ID
-                  </p>
-                  <p className="text-sm font-mono">{log.entityId}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">
@@ -139,10 +129,6 @@ export function AuditLogDetailDialog({
                     User Name
                   </p>
                   <p className="text-sm font-medium">{log.userName}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">User ID</p>
-                  <p className="text-sm font-mono">{log.userId}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">

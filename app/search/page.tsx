@@ -187,7 +187,7 @@ export default function SearchPage() {
       propertyType: 'all',
       city: undefined,
       area: undefined,
-      rentRange: [2000, 20000],
+      rentRange: [2000, 100000],
       availableOnly: true,
       gender: null,
       seatType: null,
@@ -585,7 +585,7 @@ export default function SearchPage() {
       formValues.city ||
       formValues.area ||
       formValues.rentRange[0] !== 2000 ||
-      formValues.rentRange[1] !== 20000 ||
+      formValues.rentRange[1] !== 100000 ||
       formValues.availableOnly ||
       formValues.verifiedOnly ||
       formValues.gender ||
@@ -671,7 +671,7 @@ export default function SearchPage() {
       propertyType: 'all',
       city: undefined,
       area: undefined,
-      rentRange: [2000, 20000],
+      rentRange: [2000, 100000],
       availableOnly: true,
       gender: null,
       seatType: null,
@@ -780,7 +780,7 @@ export default function SearchPage() {
   }
 
   const minRent = 2000
-  const maxRent = 20000
+  const maxRent = 100000
 
   return (
     <Layout>
