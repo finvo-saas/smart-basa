@@ -9,23 +9,48 @@ interface NotificationBadgeProps {
   className?: string
 }
 
+const listeners = new Set<(count: number) => void>()
+let sharedCount = 0
+let timer: number | null = null
+
+function publish(count: number) {
+  sharedCount = count
+  listeners.forEach(listener => listener(count))
+}
+
+function ensurePolling() {
+  if (timer != null) return
+  const tick = () => {
+    if (document.hidden || listeners.size === 0) return
+    void fetchUnreadMessageCount().then(result => {
+      if (result.ok) publish(result.data)
+    })
+  }
+  tick()
+  timer = window.setInterval(tick, 30000)
+}
+
+function stopPolling() {
+  if (listeners.size > 0 || timer == null) return
+  window.clearInterval(timer)
+  timer = null
+}
+
 export function NotificationBadge({
   userId,
   className,
 }: NotificationBadgeProps) {
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [unreadCount, setUnreadCount] = useState(sharedCount)
 
   useEffect(() => {
-    const updateCount = () => {
-      fetchUnreadMessageCount(userId).then(result => {
-        if (result.ok) setUnreadCount(result.data)
-      })
+    if (!userId) return
+    listeners.add(setUnreadCount)
+    setUnreadCount(sharedCount)
+    ensurePolling()
+    return () => {
+      listeners.delete(setUnreadCount)
+      stopPolling()
     }
-
-    updateCount()
-    const interval = setInterval(updateCount, 5000)
-
-    return () => clearInterval(interval)
   }, [userId])
 
   if (unreadCount === 0) return null

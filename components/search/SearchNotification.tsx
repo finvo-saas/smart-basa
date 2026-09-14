@@ -101,10 +101,11 @@ export function SearchNotification({ userId }: SearchNotificationProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="relative"
+        className="relative h-9 w-9 shrink-0 md:h-10 md:w-10"
+        title="New listing matches"
         onClick={() => setShowNotificationDialog(true)}
       >
-        <Bell className="h-5 w-5" />
+        <Search className="h-5 w-5" />
         {totalNewMatches > 0 && (
           <Badge
             variant="destructive"

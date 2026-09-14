@@ -5,11 +5,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Search, MessageCircle, Plus } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
-import Image from 'next/image'
 import type { Chat } from '@/types/chat'
+import { ChatAvatar } from '@/components/chat/ChatAvatar'
 
 interface ChatListProps {
   chats: Chat[]
@@ -76,9 +75,9 @@ export function ChatList({
   }
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b">
+      <div className="shrink-0 border-b p-3 sm:p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
@@ -102,7 +101,7 @@ export function ChatList({
       </div>
 
       {/* Chat List */}
-      <ScrollArea className="flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
         {filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4">
             <MessageCircle className="h-12 w-12 text-muted-foreground mb-4" />
@@ -125,30 +124,18 @@ export function ChatList({
                 <button
                   key={chat.id}
                   onClick={() => onChatSelect(chat)}
-                  className={`w-full p-4 text-left hover:bg-muted/50 transition-colors ${
+                  className={`w-full p-3 text-left transition-colors hover:bg-muted/50 sm:p-4 ${
                     isSelected ? 'bg-muted' : ''
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     {/* Avatar */}
                     <div className="relative shrink-0">
-                      {otherParticipant.avatar ? (
-                        <div className="relative h-12 w-12 rounded-full overflow-hidden">
-                          <Image
-                            src={otherParticipant.avatar}
-                            alt={otherParticipant.name}
-                            fill
-                            className="object-cover"
-                            sizes="48px"
-                          />
-                        </div>
-                      ) : (
-                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-lg font-semibold text-primary">
-                            {otherParticipant.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                      )}
+                      <ChatAvatar
+                        name={otherParticipant.name}
+                        avatar={otherParticipant.avatar}
+                        className="h-12 w-12"
+                      />
                       {chat.unreadCount > 0 && (
                         <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
                           <span className="text-xs font-bold text-primary-foreground">
@@ -195,7 +182,7 @@ export function ChatList({
             })}
           </div>
         )}
-      </ScrollArea>
+      </div>
     </Card>
   )
 }

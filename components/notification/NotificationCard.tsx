@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { formatDistanceToNow } from 'date-fns'
 import {
   Bell,
+  MessageCircle,
   Building2,
   Check,
   CheckCircle2,
@@ -49,6 +50,15 @@ function visualFor(notification: Notification) {
         : accepted
           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
           : 'bg-primary/10 text-primary',
+    }
+  }
+  if (
+    notification.link?.includes('/messages') ||
+    text.includes('message from')
+  ) {
+    return {
+      icon: MessageCircle,
+      className: 'bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-200',
     }
   }
   if (notification.type === 'bill') {

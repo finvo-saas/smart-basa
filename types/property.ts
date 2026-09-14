@@ -83,6 +83,10 @@ export interface Property {
   instantBook?: boolean
   /** Flat in My properties that this apartment listing is for. */
   linkedFlatId?: string | null
+  /** Linked flat occupancy. Unlinked listings are not tied to a portfolio flat. */
+  occupancy?: 'occupied' | 'vacant' | 'unlinked'
+  unitLabel?: string | null
+  flatStatus?: string | null
   /** Security deposit in months of rent */
   depositMonths?: number
   /** Public discovery visibility */

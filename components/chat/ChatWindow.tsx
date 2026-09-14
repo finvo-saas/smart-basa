@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
@@ -21,10 +20,12 @@ import {
   X,
   Phone,
   MapPin,
+  ArrowLeft,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import Image from 'next/image'
 import type { Chat, ChatMessage, ChatUser } from '@/types/chat'
+import { ChatAvatar } from '@/components/chat/ChatAvatar'
 import { getAcceptAttribute, validateFile } from '@/lib/security/file-upload'
 import { toast } from '@/lib/feedback/toast'
 
@@ -36,6 +37,7 @@ interface ChatWindowProps {
   onSendMessage: (content: string, type?: 'text' | 'image' | 'file') => void
   onSendFile?: (file: File) => void
   onCall?: (phone: string) => void
+  onBack?: () => void
 }
 
 export function ChatWindow({
@@ -46,6 +48,7 @@ export function ChatWindow({
   onSendMessage,
   onSendFile,
   onCall,
+  onBack,
 }: ChatWindowProps) {
   const [messageText, setMessageText] = useState('')
   const [showImagePreview, setShowImagePreview] = useState(false)
@@ -62,7 +65,7 @@ export function ChatWindow({
 
   if (!chat) {
     return (
-      <Card className="h-full flex items-center justify-center">
+      <Card className="flex h-full min-h-0 items-center justify-center">
         <CardContent className="text-center">
           <p className="text-muted-foreground">
             Select a chat to start messaging
@@ -180,34 +183,33 @@ export function ChatWindow({
   }
 
   return (
-    <Card className="h-full flex flex-col">
-      {/* Header */}
-      <CardHeader className="border-b pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {otherUser.avatar ? (
-              <div className="relative h-10 w-10 rounded-full overflow-hidden">
-                <Image
-                  src={otherUser.avatar}
-                  alt={otherUser.name}
-                  fill
-                  className="object-cover"
-                  sizes="40px"
-                />
-              </div>
-            ) : (
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-semibold text-primary">
-                  {otherUser.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
-            <div>
-              <CardTitle className="text-base">{otherUser.name}</CardTitle>
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+      <CardHeader className="shrink-0 border-b px-3 py-3 sm:px-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            {onBack ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0 lg:hidden"
+                onClick={onBack}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="sr-only">Back</span>
+              </Button>
+            ) : null}
+            <ChatAvatar
+              name={otherUser.name}
+              avatar={otherUser.avatar}
+              className="h-10 w-10"
+            />
+            <div className="min-w-0">
+              <CardTitle className="truncate text-base">{otherUser.name}</CardTitle>
               {chat.propertyName && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <MapPin className="h-3 w-3" />
-                  <span>{chat.propertyName}</span>
+                <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{chat.propertyName}</span>
                 </div>
               )}
               {otherParticipant?.isOnline && (
@@ -215,20 +217,21 @@ export function ChatWindow({
               )}
             </div>
           </div>
-          {onCall && otherParticipant && (
+          {onCall && otherParticipant?.phone ? (
             <Button
               variant="outline"
               size="icon"
+              className="h-9 w-9 shrink-0"
               onClick={() => onCall(otherParticipant.phone)}
             >
               <Phone className="h-4 w-4" />
             </Button>
-          )}
+          ) : null}
         </div>
       </CardHeader>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-3 sm:px-4">
         <div className="space-y-4">
           {Object.entries(groupedMessages).map(([date, dateMessages]) => (
             <div key={date}>
@@ -268,7 +271,7 @@ export function ChatWindow({
           ))}
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Image Preview Dialog */}
       <Dialog open={showImagePreview} onOpenChange={setShowImagePreview}>
@@ -306,7 +309,7 @@ export function ChatWindow({
       </Dialog>
 
       {/* Input Area */}
-      <div className="border-t p-4">
+      <div className="shrink-0 border-t p-2 sm:p-3">
         {/* Image Preview */}
         {selectedFile && imagePreview && !showImagePreview && (
           <div className="mb-2 relative inline-block">
@@ -330,7 +333,7 @@ export function ChatWindow({
           </div>
         )}
 
-        <div className="flex items-end gap-2">
+        <div className="flex min-w-0 items-end gap-1.5 sm:gap-2">
           {/* File Inputs */}
           <input
             ref={fileInputRef}
@@ -348,10 +351,11 @@ export function ChatWindow({
           />
 
           {/* Attach Button */}
-          <div className="flex gap-1">
+          <div className="flex shrink-0 gap-1">
             <Button
               variant="outline"
               size="icon"
+              className="h-9 w-9 sm:h-10 sm:w-10"
               onClick={() => imageInputRef.current?.click()}
             >
               <ImageIcon className="h-4 w-4" />
@@ -359,6 +363,7 @@ export function ChatWindow({
             <Button
               variant="outline"
               size="icon"
+              className="h-9 w-9 sm:h-10 sm:w-10"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-4 w-4" />
@@ -371,7 +376,7 @@ export function ChatWindow({
             onChange={e => setMessageText(e.target.value)}
             onKeyDown={handleKeyPress}
             placeholder="Type a message..."
-            className="min-h-[60px] max-h-[120px] resize-none"
+            className="max-h-28 min-h-10 min-w-0 flex-1 resize-none py-2"
             rows={1}
           />
 
@@ -380,7 +385,7 @@ export function ChatWindow({
             onClick={handleSend}
             disabled={!messageText.trim()}
             size="icon"
-            className="shrink-0"
+            className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
           >
             <Send className="h-4 w-4" />
           </Button>

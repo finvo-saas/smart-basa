@@ -7,6 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: siteConfig.shortName,
     description:
       'Find and manage mess, hostel, hotel & apartment living in Bangladesh.',
+    id: '/',
     start_url: '/',
     scope: '/',
     display: 'standalone',
@@ -18,21 +19,28 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['lifestyle', 'business', 'utilities'],
     icons: [
       {
-        src: '/icons/icon.svg',
-        sizes: 'any',
-        type: 'image/svg+xml',
+        src: '/icons/icon-192.png',
+        sizes: '192x192',
+        type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icons/icon.svg',
-        sizes: 'any',
-        type: 'image/svg+xml',
+        src: '/icons/icon-512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icons/icon-192-maskable.png',
+        sizes: '192x192',
+        type: 'image/png',
         purpose: 'maskable',
       },
       {
-        src: '/favicon.ico',
-        sizes: '48x48',
-        type: 'image/x-icon',
+        src: '/icons/icon-512-maskable.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
       },
     ],
   }

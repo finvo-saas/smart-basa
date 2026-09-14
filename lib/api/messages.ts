@@ -76,19 +76,37 @@ export async function sendChatMessage(
   })
 }
 
+export type ChatContact = {
+  userId: string
+  name: string
+  avatar?: string
+  context: string
+  contextId?: string
+  label: string
+  propertyId?: string
+  propertyName?: string
+}
+
+export async function fetchChatContacts(): Promise<ApiResult<ChatContact[]>> {
+  if (!hasAuthTokens()) return { ok: true, data: [] }
+  return apiRequest<ChatContact[]>('/chats/contacts/')
+}
+
 export async function createChat(
-  chat: Omit<Chat, 'id' | 'createdAt' | 'updatedAt' | 'unreadCount'> & {
-    id?: string
+  chat: {
+    participant2Id?: string
+    propertyId?: string
+    propertyName?: string
     initialMessage?: string
   },
 ): Promise<ApiResult<Chat>> {
   return apiRequest<Chat>('/chats/', {
     method: 'POST',
     body: {
-      participant2Id: chat.participant2Id,
-      propertyId: chat.propertyId,
+      participant2Id: chat.participant2Id || undefined,
+      propertyId: chat.propertyId || undefined,
       propertyName: chat.propertyName || '',
-      initialMessage: chat.initialMessage || chat.lastMessage || '',
+      initialMessage: chat.initialMessage || '',
     },
   })
 }

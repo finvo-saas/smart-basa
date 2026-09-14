@@ -6,6 +6,8 @@ import {
 } from '@/lib/seo/get-page-metadata'
 import { fetchPropertyServer } from '@/lib/seo/fetch-entity'
 import { extractEntityId, listingPath } from '@/lib/seo/slug'
+import { breadcrumbJsonLd, listingJsonLd } from '@/lib/seo/json-ld'
+import { JsonLd } from '@/components/seo/JsonLd'
 import { ListingDetailClient } from './ListingDetailClient'
 
 type Props = { params: Promise<{ id: string }> }
@@ -29,5 +31,36 @@ export default async function ListingPage({ params }: Props) {
     if (canonical !== `/listings/${param}`) permanentRedirect(canonical)
   }
 
-  return <ListingDetailClient id={id} />
+  const canonical = property ? listingPath(property) : `/listings/${param}`
+
+  return (
+    <>
+      {property ? (
+        <JsonLd
+          data={[
+            breadcrumbJsonLd([
+              { name: 'Home', path: '/' },
+              { name: 'Search', path: '/search' },
+              { name: property.name, path: canonical },
+            ]),
+            listingJsonLd({
+              name: property.name,
+              type: property.type,
+              rent: property.rent,
+              area: property.area,
+              address: property.address,
+              city: property.city,
+              description: property.description,
+              images: property.images,
+              available: property.available,
+              path: canonical,
+              bedrooms: property.bedrooms,
+              bathrooms: property.bathrooms,
+            }),
+          ]}
+        />
+      ) : null}
+      <ListingDetailClient id={id} />
+    </>
+  )
 }

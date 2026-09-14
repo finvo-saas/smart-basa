@@ -1,6 +1,7 @@
 'use client'
 
 import { ReactNode, Suspense, useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { AppHeader } from './AppHeader'
 import { Footer } from './Footer'
 import { Navbar } from './Navbar'
@@ -9,8 +10,10 @@ import { MobileNavProvider } from './MobileNavContext'
 import { OfflineBanner } from '@/components/feedback'
 import { SkipToContent } from '@/components/a11y'
 import { InstallPrompt } from '@/components/pwa'
+import { InstallCapture } from '@/components/pwa/InstallCapture'
 import { PushRegistrar } from '@/components/pwa/PushRegistrar'
 import { ServiceWorkerRegistrar } from '@/components/pwa/ServiceWorkerRegistrar'
+import { isPrivatePath } from '@/lib/seo/routes'
 import { getStoredRole, isLoggedIn } from '@/utils/auth'
 import { UserRole } from '@/types'
 
@@ -20,6 +23,7 @@ interface LayoutProps {
 }
 
 export const Layout = ({ children, userRole }: LayoutProps) => {
+  const pathname = usePathname()
   const [currentRole, setCurrentRole] = useState<UserRole>('renter')
   const [mounted, setMounted] = useState(false)
 
@@ -32,6 +36,7 @@ export const Layout = ({ children, userRole }: LayoutProps) => {
   }, [userRole])
 
   const isUserLoggedIn = mounted && isLoggedIn()
+  const dashboardView = isPrivatePath(pathname || '/')
 
   return (
     <MobileNavProvider userRole={currentRole}>
@@ -49,11 +54,15 @@ export const Layout = ({ children, userRole }: LayoutProps) => {
         <main
           id="main-content"
           tabIndex={-1}
-          className="min-w-0 flex-grow pb-16 outline-none md:pb-0"
+          className={
+            isUserLoggedIn
+              ? 'min-w-0 flex-grow pb-16 outline-none md:pb-0'
+              : 'min-w-0 flex-grow outline-none'
+          }
         >
           {children}
         </main>
-        <div className="hidden md:block">
+        <div className={dashboardView ? 'hidden md:block' : undefined}>
           <Footer />
         </div>
         {isUserLoggedIn && (
@@ -63,6 +72,7 @@ export const Layout = ({ children, userRole }: LayoutProps) => {
         )}
         {isUserLoggedIn && <PushRegistrar />}
         <ServiceWorkerRegistrar />
+        <InstallCapture />
         <InstallPrompt />
       </div>
     </MobileNavProvider>

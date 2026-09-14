@@ -141,9 +141,9 @@ export function ImageGallery({
 
   return (
     <>
-      <div className="space-y-3">
+      <div className="min-w-0 max-w-full space-y-3">
         {/* Main Image with Zoom */}
-        <div className="relative h-48 w-full overflow-hidden rounded-lg bg-muted sm:h-80">
+        <div className="relative h-48 w-full max-w-full overflow-hidden rounded-lg bg-muted sm:h-80">
           <div
             ref={imageRef}
             className={`relative h-full w-full transition-transform duration-300 origin-center ${
@@ -238,19 +238,20 @@ export function ImageGallery({
 
         {/* Thumbnail Gallery */}
         {images.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-2">
+          <div className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:thin]">
             {images.map((img, idx) => (
               <button
                 key={idx}
+                type="button"
                 onClick={() => {
                   setCurrentIndex(idx)
                   setImageError(false)
                   resetZoom()
                 }}
-                className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-md border-2 transition-all ${
+                className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-md border-2 transition-colors sm:h-24 sm:w-24 ${
                   currentIndex === idx
-                    ? 'border-primary scale-105'
-                    : 'border-transparent opacity-60 hover:opacity-100 hover:scale-105'
+                    ? 'border-primary'
+                    : 'border-transparent opacity-70 hover:opacity-100'
                 }`}
               >
                 <Image
@@ -258,7 +259,7 @@ export function ImageGallery({
                   alt={`${propertyName} thumbnail ${idx + 1}`}
                   fill
                   className="object-cover"
-                  sizes="80px"
+                  sizes="96px"
                 />
               </button>
             ))}

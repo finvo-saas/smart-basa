@@ -17,6 +17,7 @@ import { FeaturedBadge, isListingFeatured } from '@/components/monetization/Feat
 import { FreshnessBadge } from '@/components/discover/FreshnessBadge'
 import { AIMatchScoreBadge } from '@/components/search/AIMatchScoreBadge'
 import { useRouter } from 'next/navigation'
+import { chatWithPath } from '@/lib/chat/link'
 import type { Property } from '@/types/property'
 import Image from 'next/image'
 import { formatCurrency } from '@/lib/format/locale'
@@ -59,7 +60,13 @@ export function PropertyCard({
 
   const handleStartChat = (e: React.MouseEvent) => {
     e.stopPropagation()
-    router.push(`/messages?propertyId=${property.id}`)
+    router.push(
+      chatWithPath({
+        userId: property.ownerId,
+        propertyId: property.id,
+        propertyName: property.name,
+      }),
+    )
   }
 
   return (

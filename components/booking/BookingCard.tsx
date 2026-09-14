@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { BookingStatusBadge } from '@/components/booking/BookingStatusBadge'
-import { Calendar, MapPin, Phone, User, X, Check, XCircle, Zap } from 'lucide-react'
+import Link from 'next/link'
+import { Calendar, MapPin, Phone, User, X, Check, XCircle, Zap, MessageCircle } from 'lucide-react'
+import { chatWithPath } from '@/lib/chat/link'
 import { format } from 'date-fns'
 import Image from 'next/image'
 import type { Booking } from '@/types/booking'
@@ -171,6 +173,19 @@ export function BookingCard({
                 </p>
               </div>
             )}
+
+            <Button variant="outline" className="h-11 w-full" asChild>
+              <Link
+                href={chatWithPath({
+                  userId: showActions ? booking.renterId : booking.ownerId,
+                  propertyId: booking.propertyId,
+                  propertyName: booking.propertyName,
+                })}
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Message
+              </Link>
+            </Button>
 
             {/* Actions */}
             {showActions && booking.status === 'pending' && (

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,17 +19,19 @@ export function SearchHistoryItem({
   onSearch,
   onRemove,
 }: SearchHistoryItemProps) {
+  const t = useTranslations('search.history')
+  const tc = useTranslations('common')
+
   const formatTime = (timestamp: string) => {
     try {
       const date = new Date(timestamp)
       const now = new Date()
       const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
 
-      if (diffInHours < 24) {
+      if (diffInHours < 24 * 7) {
         return formatDistanceToNow(date, { addSuffix: true })
-      } else {
-        return format(date, 'MMM dd, yyyy HH:mm')
       }
+      return format(date, 'MMM d, yyyy')
     } catch {
       return ''
     }
@@ -52,77 +55,76 @@ export function SearchHistoryItem({
   }
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            {/* Search Query or Filter Summary */}
-            {history.searchQuery ? (
-              <div className="mb-2">
-                <p className="font-semibold text-sm mb-1">
-                  &ldquo;{history.searchQuery}&rdquo;
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {getFilterSummary()}
-                </p>
+    <Card className="flex h-full min-w-0 flex-col overflow-hidden transition-shadow hover:shadow-md">
+      <CardContent className="flex h-full flex-col gap-3 p-3 pt-3 sm:p-4 sm:pt-4">
+        <div className="min-w-0 flex-1">
+          {history.searchQuery ? (
+            <div className="mb-2">
+              <p className="mb-1 line-clamp-2 break-words text-sm font-semibold">
+                &ldquo;{history.searchQuery}&rdquo;
+              </p>
+              <p className="line-clamp-2 break-words text-xs text-muted-foreground">
+                {getFilterSummary()}
+              </p>
+            </div>
+          ) : (
+            <p className="mb-2 line-clamp-2 break-words text-sm font-semibold">
+              {getFilterSummary()}
+            </p>
+          )}
+
+          <div className="space-y-1 text-xs text-muted-foreground">
+            {history.filters.rentRange && (
+              <div className="flex min-w-0 items-center gap-2">
+                <DollarSign className="h-3 w-3 shrink-0" />
+                <span className="min-w-0 truncate">
+                  ৳{history.filters.rentRange[0].toLocaleString()} – ৳
+                  {history.filters.rentRange[1].toLocaleString()}
+                </span>
               </div>
-            ) : (
-              <p className="font-semibold text-sm mb-2">{getFilterSummary()}</p>
             )}
-
-            {/* Filter Details */}
-            <div className="space-y-1 text-xs text-muted-foreground">
-              {history.filters.rentRange && (
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-3 w-3" />
-                  <span>
-                    ৳{history.filters.rentRange[0].toLocaleString()} - ৳
-                    {history.filters.rentRange[1].toLocaleString()}
-                  </span>
-                </div>
-              )}
-              {history.filters.city && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-3 w-3" />
-                  <span>
-                    {history.filters.area ? `${history.filters.area}, ` : ''}
-                    {history.filters.city}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Result Count and Time */}
-            <div className="mt-2 flex items-center gap-3">
-              <Badge variant="secondary" className="text-xs">
-                {history.resultCount}{' '}
-                {history.resultCount === 1 ? 'result' : 'results'}
-              </Badge>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                <span>{formatTime(history.searchedAt)}</span>
+            {history.filters.city && (
+              <div className="flex min-w-0 items-center gap-2">
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span className="min-w-0 truncate">
+                  {history.filters.area ? `${history.filters.area}, ` : ''}
+                  {history.filters.city}
+                </span>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Actions */}
-          <div className="flex flex-col gap-2 shrink-0">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => onSearch(history)}
-            >
-              <Search className="mr-2 h-4 w-4" />
-              Search
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onRemove(history.id)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+          <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <Badge variant="secondary" className="text-xs">
+              {history.resultCount}{' '}
+              {history.resultCount === 1 ? 'result' : 'results'}
+            </Badge>
+            <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3 shrink-0" />
+              <span className="truncate">{formatTime(history.searchedAt)}</span>
+            </div>
           </div>
+        </div>
+
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            className="h-9 min-w-0 flex-1"
+            onClick={() => onSearch(history)}
+          >
+            <Search className="mr-2 h-4 w-4 shrink-0" />
+            <span className="truncate">{t('runAgain')}</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 shrink-0"
+            aria-label={tc('delete')}
+            onClick={() => onRemove(history.id)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       </CardContent>
     </Card>

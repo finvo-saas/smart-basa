@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { WhatsAppButton } from '@/components/contact/WhatsAppButton'
@@ -15,7 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Calendar, Users, Phone, Mail, Check, X } from 'lucide-react'
+import { Calendar, Users, Phone, Mail, Check, X, MessageCircle } from 'lucide-react'
+import { chatWithPath } from '@/lib/chat/link'
 import {
   fetchHotelBookings,
   fetchHotelById,
@@ -223,7 +225,13 @@ export default function BookingManagementPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
+                            <Button size="sm" variant="outline" asChild>
+                              <Link href={chatWithPath({ userId: booking.userId })}>
+                                <MessageCircle className="mr-1 h-3 w-3" />
+                                Message
+                              </Link>
+                            </Button>
                             {booking.status === 'pending' && (
                               <>
                                 <Button

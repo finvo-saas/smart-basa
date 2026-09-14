@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { WhatsAppButton } from '@/components/contact/WhatsAppButton'
 import {
@@ -37,7 +38,9 @@ import {
   Trash2,
   Megaphone,
   ExternalLink,
+  MessageCircle,
 } from 'lucide-react'
+import { chatWithPath } from '@/lib/chat/link'
 import type { Flat } from '@/types/building'
 import type { Bill } from '@/types/bill'
 import { RenterHistoryDialog } from '@/components/renter/RenterHistoryDialog'
@@ -478,6 +481,20 @@ export function FlatDetailDialog({
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 {t('vacate')}
+              </Button>
+            ) : null}
+            {flat.renter ? (
+              <Button variant="outline" className="h-auto w-full whitespace-normal px-3 py-2" asChild>
+                <Link
+                  href={chatWithPath({
+                    userId: flat.renter.id,
+                    propertyId: flat.listingId || undefined,
+                    propertyName: flat.flatNumber,
+                  })}
+                >
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Message renter
+                </Link>
               </Button>
             ) : null}
             {flat.renter ? (

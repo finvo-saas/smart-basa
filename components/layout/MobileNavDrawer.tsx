@@ -3,18 +3,26 @@
 import { useCallback, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
   ArrowUpRight,
+  Bookmark,
   Check,
   ChevronRight,
+  Clock,
+  Heart,
   LogOut,
+  Moon,
   Plus,
   Sparkles,
+  Sun,
   User,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { BrandIcon } from '@/components/layout/BrandLogo'
+import { LanguageSwitcher } from '@/components/i18n'
+import { InstallAppButton } from '@/components/pwa/InstallAppButton'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Sheet,
@@ -24,6 +32,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { OwnerFocusDialog } from '@/components/onboarding'
+import { useTheme } from '@/components/theme/ThemeProvider'
 import { cn } from '@/lib/utils'
 import {
   getMobileUtilityLinksForRole,
@@ -142,6 +151,8 @@ export function MobileNavDrawer({
 }: MobileNavDrawerProps) {
   const pathname = usePathname()
   const { label } = useNavLabels()
+  const tLayout = useTranslations('layout')
+  const { theme, toggleTheme } = useTheme()
   const { navOptions, enabledVerticals, focusSelected } =
     useOwnerFocus()
   const ownerOpts = userRole === 'owner' ? navOptions : undefined
@@ -225,6 +236,52 @@ export function MobileNavDrawer({
 
           <ScrollArea className="min-h-0 flex-1">
             <div className="space-y-5 px-3 py-4">
+              <div className="space-y-1">
+                {userRole === 'renter' && (
+                  <>
+                    <Link
+                      href="/search-history"
+                      onClick={close}
+                      className={linkClass(pathname.startsWith('/search-history'))}
+                    >
+                      <Clock className="h-4 w-4 shrink-0 opacity-80" />
+                      <span className="flex-1">{tLayout('searchHistory')}</span>
+                      <ChevronRight className="h-4 w-4 shrink-0 opacity-40" />
+                    </Link>
+                    <Link
+                      href="/favorites"
+                      onClick={close}
+                      className={linkClass(pathname.startsWith('/favorites'))}
+                    >
+                      <Heart className="h-4 w-4 shrink-0 opacity-80" />
+                      <span className="flex-1">{tLayout('favorites')}</span>
+                      <ChevronRight className="h-4 w-4 shrink-0 opacity-40" />
+                    </Link>
+                    <Link
+                      href="/saved-searches"
+                      onClick={close}
+                      className={linkClass(pathname.startsWith('/saved-searches'))}
+                    >
+                      <Bookmark className="h-4 w-4 shrink-0 opacity-80" />
+                      <span className="flex-1">{tLayout('savedSearches')}</span>
+                      <ChevronRight className="h-4 w-4 shrink-0 opacity-40" />
+                    </Link>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className={linkClass(false)}
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="h-4 w-4 shrink-0 opacity-80" />
+                  ) : (
+                    <Moon className="h-4 w-4 shrink-0 opacity-80" />
+                  )}
+                  <span className="flex-1">{tLayout('toggleTheme')}</span>
+                </button>
+              </div>
+
               {userRole === 'owner' && focusSelected && (
                 <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
                   <div className="flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-primary">
@@ -342,7 +399,9 @@ export function MobileNavDrawer({
             </div>
           </ScrollArea>
 
-          <div className="border-t p-4">
+          <div className="space-y-3 border-t p-4">
+            <InstallAppButton className="w-full" onDone={close} />
+            <LanguageSwitcher variant="outline" size="sm" className="w-full" />
             <Button
               variant="outline"
               className="w-full text-destructive hover:text-destructive"

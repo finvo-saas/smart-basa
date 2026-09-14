@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { chatWithPath } from '@/lib/chat/link'
 import Link from 'next/link'
 import { WhatsAppButton } from '@/components/contact/WhatsAppButton'
 import {
@@ -85,7 +86,13 @@ export function PropertyDetailDialog({
       : 'Request flat'
 
   const handleStartChat = () => {
-    router.push(`/messages?propertyId=${property.id}`)
+    router.push(
+      chatWithPath({
+        userId: property.ownerId,
+        propertyId: property.id,
+        propertyName: property.name,
+      }),
+    )
     onOpenChange(false)
   }
 

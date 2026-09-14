@@ -4,6 +4,8 @@ import { getLocale } from 'next-intl/server'
 import type { AppLocale } from '@/lib/i18n/config'
 import { fetchHotelServer } from '@/lib/seo/fetch-entity'
 import { extractEntityId, hotelPath } from '@/lib/seo/slug'
+import { breadcrumbJsonLd, hotelJsonLd } from '@/lib/seo/json-ld'
+import { JsonLd } from '@/components/seo/JsonLd'
 
 type Props = { children: React.ReactNode; params: Promise<{ hotelId: string }> }
 
@@ -38,6 +40,33 @@ export async function generateMetadata({
   })
 }
 
-export default async function HotelDetailLayout({ children }: Props) {
-  return children
+export default async function HotelDetailLayout({ children, params }: Props) {
+  const { hotelId } = await params
+  const hotel = await fetchHotelServer(extractEntityId(hotelId))
+  if (!hotel) return children
+  const path = hotelPath(hotel)
+  return (
+    <>
+      <JsonLd
+        data={[
+          breadcrumbJsonLd([
+            { name: 'Home', path: '/' },
+            { name: 'Hotels', path: '/hotels' },
+            { name: hotel.name, path },
+          ]),
+          hotelJsonLd({
+            name: hotel.name,
+            description: hotel.description,
+            address: hotel.address,
+            area: hotel.area,
+            city: hotel.city,
+            images: hotel.images,
+            path,
+            starRating: hotel.starRating,
+          }),
+        ]}
+      />
+      {children}
+    </>
+  )
 }

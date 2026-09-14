@@ -85,11 +85,17 @@
     "searchPlaceholder": "Search conversations…",
     "selectProperty": "Select a property to start chatting",
     "startNewChat": "Start new chat",
-    "startNewChatDesc": "Select a property to start chatting with the owner",
-    "searchProperty": "Search property",
-    "searchPropertyPlaceholder": "Search by name, address, or area…",
-    "chooseProperty": "Choose a property",
-    "startChat": "Start chat"
+    "startNewChatDesc": "Message an owner or a renter you already deal with. They get a notification.",
+    "searchProperty": "Search",
+    "searchPropertyPlaceholder": "Search by name…",
+    "chooseProperty": "Choose a person",
+    "choosePerson": "Choose a person",
+    "noContacts": "No one to message yet",
+    "noContactsDesc": "Message an owner from a listing, or a renter from a booking or flat.",
+    "startChat": "Start chat",
+    "back": "Back",
+    "sendFailed": "Message was not sent.",
+    "openFailed": "Could not open this chat."
   },
   "documents": {
     "title": "Documents",

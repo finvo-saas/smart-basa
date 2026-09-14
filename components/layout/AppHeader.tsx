@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import { LanguageSwitcher } from '@/components/i18n'
+import { InstallAppButton } from '@/components/pwa/InstallAppButton'
 import { Button } from '@/components/ui/button'
 import { NotificationBadge } from '@/components/chat/NotificationBadge'
 import { NotificationsBell } from '@/components/notification/NotificationsBell'
@@ -23,7 +24,7 @@ import {
   Moon,
   Sun,
   MessageCircle,
-  Bell,
+  Megaphone,
   Heart,
   Clock,
   Bookmark,
@@ -207,7 +208,7 @@ export function AppHeader() {
                 {role === 'owner' && (
                   <Button variant="ghost" size="icon" asChild title={t('notices')}>
                     <Link href="/notices">
-                      <Bell className="h-5 w-5" />
+                      <Megaphone className="h-5 w-5" />
                     </Link>
                   </Button>
                 )}
@@ -250,36 +251,26 @@ export function AppHeader() {
           </div>
 
           {/* Compact header (< lg): full guest menu via sheet */}
-          <div className="flex min-w-0 shrink-0 items-center gap-0 lg:hidden">
+          <div className="flex min-w-0 shrink-0 items-center gap-1 lg:hidden">
             {!mounted ? (
               <div className="h-8 w-16 animate-pulse rounded bg-muted" />
             ) : loggedIn && role ? (
               <>
-                <div className="hidden min-[380px]:contents">
-                  <SearchNotification userId={userId} />
-                  {role === 'owner' && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      asChild
-                      className="h-9 w-9 shrink-0"
-                      title="Notices"
-                    >
-                      <Link href="/notices">
-                        <Bell className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  )}
-                </div>
+                {role === 'renter' && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    asChild
+                    className="h-9 w-9 shrink-0"
+                    title={t('savedSearches')}
+                  >
+                    <Link href="/saved-searches">
+                      <Bookmark className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
                 {messagesButton}
                 <NotificationsBell />
-                {themeButton}
-                <LanguageSwitcher
-                  variant="ghost"
-                  size="icon"
-                  showLabel={false}
-                  className="h-9 w-9"
-                />
                 <UserAccountMenu
                   userName={userName}
                   isVerified={isVerified}
@@ -296,12 +287,6 @@ export function AppHeader() {
                 >
                   <Link href="/login">{t('login')}</Link>
                 </Button>
-                <LanguageSwitcher
-                  variant="ghost"
-                  size="icon"
-                  showLabel={false}
-                  className="h-9 w-9"
-                />
                 {themeButton}
                 <Button
                   variant="ghost"
@@ -353,7 +338,12 @@ export function AppHeader() {
                 )
               })}
             </nav>
-            <div className="border-t p-4">
+            <div className="space-y-3 border-t p-4">
+              <InstallAppButton
+                className="w-full"
+                onDone={() => setGuestMenuOpen(false)}
+              />
+              <LanguageSwitcher variant="outline" size="sm" className="w-full" />
               <Button asChild className="w-full">
                 <Link href="/login" onClick={() => setGuestMenuOpen(false)}>
                   {t('login')}

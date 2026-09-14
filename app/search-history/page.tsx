@@ -85,51 +85,60 @@ export default function SearchHistoryPage() {
 
   return (
     <Layout>
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold sm:text-3xl">{t('title')}</h1>
+      <div className="mx-auto w-full min-w-0 max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold sm:text-3xl">{t('title')}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 {t('countInHistory', { count: historyList.length })}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full min-w-0 gap-2 sm:w-auto">
               {historyList.length > 0 && (
                 <Button
                   variant="outline"
+                  size="sm"
+                  className="h-9 min-w-0 flex-1 sm:flex-none"
                   onClick={() => setShowClearDialog(true)}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {tc('clearAll')}
+                  <Trash2 className="h-4 w-4 shrink-0 sm:mr-2" />
+                  <span className="truncate">{tc('clearAll')}</span>
                 </Button>
               )}
-              <Button onClick={() => router.push('/search')}>
-                <Search className="mr-2 h-4 w-4" />
-                {tc('newSearch')}
+              <Button
+                size="sm"
+                className="h-9 min-w-0 flex-1 sm:flex-none"
+                onClick={() => router.push('/search')}
+              >
+                <Search className="h-4 w-4 shrink-0 sm:mr-2" />
+                <span className="truncate">{tc('newSearch')}</span>
               </Button>
             </div>
           </div>
         </div>
 
         {historyList.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Clock className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-lg font-semibold text-muted-foreground">
+          <Card className="min-w-0">
+            <CardContent className="flex flex-col items-center justify-center px-4 py-10 text-center sm:py-12">
+              <Clock className="mb-4 h-12 w-12 text-muted-foreground" />
+              <p className="text-base font-semibold text-muted-foreground sm:text-lg">
                 {t('emptyTitle')}
               </p>
-              <p className="mt-2 text-sm text-muted-foreground text-center">
+              <p className="mt-2 max-w-sm text-sm text-muted-foreground">
                 {t('emptyDesc')}
               </p>
-              <Button className="mt-4" onClick={() => router.push('/search')}>
-                <Search className="mr-2 h-4 w-4" />
+              <Button
+                className="mt-4 h-9 w-full max-w-xs sm:w-auto"
+                onClick={() => router.push('/search')}
+              >
+                <Search className="mr-2 h-4 w-4 shrink-0" />
                 {t('startSearching')}
               </Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
             {historyList.map(historyItem => (
               <SearchHistoryItem
                 key={historyItem.id}

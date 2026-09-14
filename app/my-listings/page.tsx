@@ -30,12 +30,26 @@ import { Building2, Plus, Eye, Pencil, Pause, Play, Sparkles, CheckCircle } from
 import Image from 'next/image'
 import type { Property } from '@/types/property'
 
+function isOccupied(listing: Property) {
+  if (listing.occupancy === 'occupied') return true
+  if (listing.occupancy === 'vacant' || listing.occupancy === 'unlinked') {
+    return false
+  }
+  return Boolean(listing.linkedFlatId) && listing.available === false
+}
+
+function occupancyLabel(listing: Property): 'occupied' | 'empty' {
+  return isOccupied(listing) ? 'occupied' : 'empty'
+}
+
 export default function MyListingsPage() {
   const t = useTranslations('portfolio.listings')
   const tc = useTranslations('common')
   const { formatCurrency, formatDate } = useAppFormat()
   const router = useRouter()
   const [tick, setTick] = useState(0)
+  const [patches, setPatches] = useState<Record<string, Partial<Property>>>({})
+  const [busyId, setBusyId] = useState<string | null>(null)
   const [boostTarget, setBoostTarget] = useState<Property | null>(null)
   const [boostOpen, setBoostOpen] = useState(false)
 
@@ -43,19 +57,40 @@ export default function MyListingsPage() {
   const loadLimit = useCallback(() => fetchFlatLimitStatus(), [tick])
   const { data: listings, loading, error, refetch } = useMockQuery(load)
   const { data: limitStatus } = useMockQuery(loadLimit)
+  const visibleListings = (listings ?? []).map(listing => ({
+    ...listing,
+    ...patches[listing.id],
+  }))
+
+  const applyPatch = (id: string, patch: Partial<Property>) => {
+    setPatches(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }))
+  }
 
   const togglePublish = async (listing: Property) => {
     const nextPublished = !listing.published
+    setBusyId(listing.id)
     const result = await updateListing(listing.id, {
       published: nextPublished,
       listingStatus: nextPublished ? 'published' : 'paused',
     })
+    setBusyId(null)
     if (!result.ok) {
       toast.error(result.error)
       return
     }
-    setTick(n => n + 1)
-    refetch()
+    const next = result.data
+    const occupied = isOccupied(next.occupancy ? next : listing)
+    applyPatch(listing.id, {
+      published: next.published,
+      listingStatus: next.listingStatus,
+      available: next.available,
+      occupancy: next.occupancy ?? listing.occupancy,
+      unitLabel: next.unitLabel ?? listing.unitLabel,
+      flatStatus: next.flatStatus ?? listing.flatStatus,
+    })
+    if (next.published && occupied) toast.warning(t('publishedOccupied'))
+    else if (next.published) toast.success(t('publishedSuccess'))
+    else toast.success(t('pausedSuccess'))
   }
 
   const openBoost = (listing: Property) => {
@@ -64,8 +99,20 @@ export default function MyListingsPage() {
   }
 
   const confirmStillAvailable = async (listing: Property) => {
-    await confirmDiscoverItem('listing', listing.id)
-    refetch()
+    setBusyId(listing.id)
+    const result = await confirmDiscoverItem('listing', listing.id)
+    setBusyId(null)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    applyPatch(listing.id, {
+      lastConfirmedAt: new Date().toISOString(),
+      confirmedHoursAgo: 0,
+    })
+    toast.success(
+      isOccupied(listing) ? t('stillAvailableOccupied') : t('stillAvailableSuccess'),
+    )
   }
 
   return (
@@ -122,8 +169,19 @@ export default function MyListingsPage() {
         )}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {listings?.map(listing => {
+          {!loading &&
+            visibleListings.map(listing => {
             const featured = isListingFeatured(listing)
+            const occupied = isOccupied(listing)
+            const paused = !listing.published
+            const confirmed =
+              listing.confirmedHoursAgo === 0
+                ? t('confirmedJustNow')
+                : listing.lastConfirmedAt
+                  ? t('confirmedAgo', {
+                      when: formatDate(listing.lastConfirmedAt, { style: 'medium' }),
+                    })
+                  : null
             return (
               <Card key={listing.id} className="overflow-hidden">
                 <div className="relative h-40 bg-muted">
@@ -142,8 +200,8 @@ export default function MyListingsPage() {
                     </div>
                   )}
                 </div>
-                <CardContent className="space-y-3 p-4">
-                  <div className="flex items-start justify-between gap-2">
+                <CardContent className="space-y-3 p-4 pt-4 sm:p-4 sm:pt-4">
+                  <div className="space-y-2">
                     <div>
                       <h3 className="font-semibold leading-tight">
                         {listing.name}
@@ -152,13 +210,37 @@ export default function MyListingsPage() {
                         {listing.type} · {listing.area}
                       </p>
                     </div>
-                    <Badge
-                      variant={listing.published ? 'default' : 'secondary'}
-                    >
-                      {listing.listingStatus ||
-                        (listing.published ? 'published' : 'draft')}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge
+                        variant={occupied ? 'destructive' : 'outline'}
+                        className={
+                          occupied
+                            ? undefined
+                            : 'border-emerald-600/40 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                        }
+                      >
+                        {t(occupancyLabel(listing))}
+                      </Badge>
+                      <Badge variant={paused ? 'secondary' : 'default'}>
+                        {paused ? t('statusPaused') : t('statusPublished')}
+                      </Badge>
+                    </div>
                   </div>
+                  {listing.unitLabel && (
+                    <p className="text-sm text-muted-foreground">{listing.unitLabel}</p>
+                  )}
+                  {!listing.unitLabel && listing.type === 'apartment' && !listing.linkedFlatId && (
+                    <p className="text-sm text-muted-foreground">{t('notLinked')}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {occupied ? t('rentersHiddenOccupied') : t('rentersSeeEmpty')}
+                    {paused ? ` · ${t('pausedHint')}` : ''}
+                  </p>
+                  {confirmed && (
+                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      {confirmed}
+                    </p>
+                  )}
                   {listing.featuredUntil && featured && (
                     <p className="text-xs text-amber-700 dark:text-amber-400">
                       {t('featuredUntil', {
@@ -204,14 +286,16 @@ export default function MyListingsPage() {
                     <Button
                       size="sm"
                       variant="outline"
+                      disabled={busyId === listing.id}
                       onClick={() => confirmStillAvailable(listing)}
                     >
                       <CheckCircle className="mr-1 h-3.5 w-3.5" />
-                      Still available
+                      {t('stillAvailable')}
                     </Button>
                     <Button
                       size="sm"
                       variant="secondary"
+                      disabled={busyId === listing.id}
                       onClick={() => togglePublish(listing)}
                     >
                       {listing.published ? (

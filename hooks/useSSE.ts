@@ -25,46 +25,48 @@ export function useSSE(
     if (!enabled || !path) return
     const base = getApiBaseUrl().replace(/\/$/, '')
     const url = path.startsWith('http') ? path : `${base}${path.startsWith('/') ? '' : '/'}${path}`
-    const token = getAccessToken()
     const controller = new AbortController()
 
     async function run() {
-      try {
-        const res = await fetch(url, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          signal: controller.signal,
-          credentials: 'include',
-        })
-        if (!res.ok || !res.body) return
-        const reader = res.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ''
-        let eventName = 'message'
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buffer += decoder.decode(value, { stream: true })
-          const parts = buffer.split('\n')
-          buffer = parts.pop() || ''
-          for (const line of parts) {
-            if (line.startsWith('event:')) {
-              eventName = line.slice(6).trim()
-            } else if (line.startsWith('data:')) {
-              const raw = line.slice(5).trim()
-              try {
-                const data = JSON.parse(raw)
-                handlersRef.current.onEvent?.(eventName, data)
-              } catch {
-                // ignore
+      while (!controller.signal.aborted) {
+        try {
+          const token = getAccessToken()
+          const res = await fetch(url, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            signal: controller.signal,
+            credentials: 'include',
+          })
+          if (res.status === 401 || res.status === 403 || !res.body) return
+          const reader = res.body.getReader()
+          const decoder = new TextDecoder()
+          let buffer = ''
+          let eventName = 'message'
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const parts = buffer.split('\n')
+            buffer = parts.pop() || ''
+            for (const line of parts) {
+              if (line.startsWith('event:')) {
+                eventName = line.slice(6).trim()
+              } else if (line.startsWith('data:')) {
+                const raw = line.slice(5).trim()
+                try {
+                  const data = JSON.parse(raw)
+                  handlersRef.current.onEvent?.(eventName, data)
+                } catch {
+                  // ignore
+                }
+                eventName = 'message'
               }
-              eventName = 'message'
             }
           }
-        }
-      } catch (err) {
-        if ((err as Error).name !== 'AbortError') {
+        } catch (err) {
+          if ((err as Error).name === 'AbortError') return
           handlersRef.current.onError?.(err as Event)
         }
+        await new Promise(resolve => window.setTimeout(resolve, 2000))
       }
     }
 

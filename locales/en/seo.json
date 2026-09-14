@@ -7,7 +7,10 @@
     "installTitle": "Install SmartBasa",
     "installDescription": "Add to your home screen for faster access to search, bills, and bookings.",
     "installAction": "Install",
-    "dismiss": "Not now"
+    "download": "Download app",
+    "dismiss": "Not now",
+    "iosHint": "In Safari, tap the Share button, then Add to Home Screen.",
+    "chromeHint": "In Chrome, open the browser menu and choose Install app or Add to Home screen."
   },
   "pages": {
     "home": {

@@ -5,6 +5,8 @@ import { buildMetadata } from '@/lib/seo/build-metadata'
 import type { AppLocale } from '@/lib/i18n/config'
 import { fetchMessServer } from '@/lib/seo/fetch-entity'
 import { extractEntityId, messPath } from '@/lib/seo/slug'
+import { breadcrumbJsonLd, messJsonLd } from '@/lib/seo/json-ld'
+import { JsonLd } from '@/components/seo/JsonLd'
 import { MessDetailClient } from './MessDetailClient'
 
 type Props = { params: Promise<{ messId: string }> }
@@ -60,5 +62,31 @@ export default async function PublicMessDetailPage({ params }: Props) {
     if (canonical !== `/messes/${param}`) permanentRedirect(canonical)
   }
 
-  return <MessDetailClient />
+  const canonical = mess ? messPath(mess) : `/messes/${param}`
+
+  return (
+    <>
+      {mess ? (
+        <JsonLd
+          data={[
+            breadcrumbJsonLd([
+              { name: 'Home', path: '/' },
+              { name: 'Search', path: '/search' },
+              { name: mess.name, path: canonical },
+            ]),
+            messJsonLd({
+              name: mess.name,
+              description: mess.description,
+              address: mess.address,
+              city: mess.city,
+              images: mess.images,
+              path: canonical,
+              monthlyFee: mess.monthlyFee,
+            }),
+          ]}
+        />
+      ) : null}
+      <MessDetailClient />
+    </>
+  )
 }

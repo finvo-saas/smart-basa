@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, useEffect, Suspense, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useMemo, useEffect, Suspense, useCallback, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Layout } from '@/components/layout/Layout'
 import { EmptyState, LoadingState } from '@/components/page'
@@ -25,17 +25,17 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Chat, ChatMessage, ChatUser } from '@/types/chat'
-import type { Property } from '@/types/property'
 import { Plus, Search } from 'lucide-react'
-import { useSSE } from '@/hooks/useSSE'
+import { toast } from '@/lib/feedback/toast'
 import {
   fetchUserChats,
   fetchChatMessages,
-  fetchMessageProperties,
+  fetchChatContacts,
   sendChatMessage,
   createChat,
   fetchChatUser,
   fetchChatById,
+  type ChatContact,
 } from '@/lib/api/messages'
 import { getCurrentAccountUserId } from '@/lib/api/account'
 import { uploadMediaFile } from '@/lib/api/media'
@@ -43,19 +43,21 @@ import { uploadMediaFile } from '@/lib/api/media'
 function MessagesPageContent() {
   const t = useTranslations('tools.messages')
   const tc = useTranslations('common')
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
   const [showNewChatDialog, setShowNewChatDialog] = useState(false)
   const [searchProperty, setSearchProperty] = useState('')
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('')
+  const [selectedContactId, setSelectedContactId] = useState('')
   const [userChats, setUserChats] = useState<Chat[]>([])
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null)
   const [otherParticipant, setOtherParticipant] = useState<
     ChatUser | undefined
   >(undefined)
-  const [properties, setProperties] = useState<Property[]>([])
+  const [contacts, setContacts] = useState<ChatContact[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const openingRef = useRef(false)
 
   const currentUserId = getCurrentAccountUserId()
 
@@ -76,36 +78,59 @@ function MessagesPageContent() {
     }
   }, [currentUserId])
 
+  const loadContacts = useCallback(async () => {
+    const result = await fetchChatContacts()
+    if (result.ok) setContacts(result.data)
+  }, [])
+
   useEffect(() => {
     let mounted = true
     setIsLoading(true)
-    Promise.all([
-      loadChats(),
-      fetchMessageProperties().then(result => {
-        if (result.ok) setProperties(result.data)
-      }),
-    ]).finally(() => {
+    Promise.all([loadChats(), loadContacts()]).finally(() => {
       if (mounted) setIsLoading(false)
     })
     return () => {
       mounted = false
     }
+  }, [loadChats, loadContacts])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.hidden) return
+      void loadChats()
+    }, 20000)
+    return () => window.clearInterval(timer)
   }, [loadChats])
 
   useEffect(() => {
+    const chatId = searchParams.get('chatId')
+    const userId = searchParams.get('userId')
     const propertyId = searchParams.get('propertyId')
-    if (propertyId) {
-      const existingChat = userChats.find(
-        chat => chat.propertyId === propertyId
-      )
-      if (existingChat) {
-        setSelectedChatId(existingChat.id)
-      } else {
-        setSelectedPropertyId(propertyId)
-        setShowNewChatDialog(true)
-      }
+    const propertyName = searchParams.get('propertyName') || ''
+    if (chatId) {
+      setSelectedChatId(chatId)
+      return
     }
-  }, [searchParams, userChats])
+    if ((!userId && !propertyId) || openingRef.current) return
+    openingRef.current = true
+    void createChat({
+      participant2Id: userId || undefined,
+      propertyId: propertyId || undefined,
+      propertyName,
+    }).then(result => {
+      openingRef.current = false
+      if (!result.ok) {
+        toast.error(result.error || t('openFailed'))
+        return
+      }
+      setUserChats(prev => [
+        result.data,
+        ...prev.filter(chat => chat.id !== result.data.id),
+      ])
+      setSelectedChatId(result.data.id)
+      router.replace(`/messages?chatId=${result.data.id}`)
+    })
+  }, [searchParams, router, t])
 
   useEffect(() => {
     if (!selectedChatId) {
@@ -121,27 +146,23 @@ function MessagesPageContent() {
     fetchChatMessages(selectedChatId).then(result => {
       if (result.ok) setChatMessages(result.data)
     })
+    setUserChats(prev =>
+      prev.map(chat =>
+        chat.id === selectedChatId ? { ...chat, unreadCount: 0 } : chat,
+      ),
+    )
   }, [selectedChatId])
 
-  useSSE(
-    selectedChatId ? `/chats/${selectedChatId}/messages/stream/` : null,
-    {
-      onEvent: (event, data) => {
-        if (event !== 'messages' || !data || typeof data !== 'object') return
-        const incoming = (data as { messages?: ChatMessage[] }).messages || []
-        if (!incoming.length) return
-        setChatMessages(prev => {
-          const ids = new Set(prev.map(m => m.id))
-          const merged = [...prev]
-          for (const msg of incoming) {
-            if (!ids.has(msg.id)) merged.push(msg)
-          }
-          return merged
-        })
-      },
-    },
-    Boolean(selectedChatId),
-  )
+  useEffect(() => {
+    if (!selectedChatId) return
+    const timer = window.setInterval(() => {
+      if (document.hidden) return
+      void fetchChatMessages(selectedChatId).then(result => {
+        if (result.ok) setChatMessages(result.data)
+      })
+    }, 15000)
+    return () => window.clearInterval(timer)
+  }, [selectedChatId])
 
   useEffect(() => {
     if (!selectedChat) {
@@ -186,10 +207,15 @@ function MessagesPageContent() {
     }, 500)
 
     const result = await sendChatMessage(selectedChat.id, newMessage)
-    if (result.ok) {
-      setChatMessages(prev => [...prev, result.data])
-      await loadChats()
+    if (!result.ok) {
+      toast.error(result.error || t('sendFailed'))
+      return
     }
+    setChatMessages(prev => {
+      if (prev.some(item => item.id === result.data.id)) return prev
+      return [...prev, result.data]
+    })
+    await loadChats()
   }
 
   const handleSendFile = async (file: File) => {
@@ -204,76 +230,58 @@ function MessagesPageContent() {
   }
 
   const handleNewChat = async () => {
-    if (selectedPropertyId) {
-      const property = properties.find(p => p.id === selectedPropertyId)
-      if (property) {
-        const existingChat = userChats.find(
-          chat => chat.propertyId === property.id
-        )
-
-        if (existingChat) {
-          setSelectedChatId(existingChat.id)
-          setShowNewChatDialog(false)
-        } else {
-          const newChat: Chat = {
-            id: `chat-${Date.now()}`,
-            participant1Id: currentUserId,
-            participant2Id: property.ownerId,
-            participant1Name: 'Current User',
-            participant2Name: property.ownerName,
-            lastMessage: undefined,
-            unreadCount: 0,
-            propertyId: property.id,
-            propertyName: property.name,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }
-          const result = await createChat(newChat)
-          if (result.ok) {
-            setUserChats(prev => [result.data, ...prev])
-            setSelectedChatId(result.data.id)
-            setShowNewChatDialog(false)
-          }
-        }
-      }
+    const contact = contacts.find(item => item.userId === selectedContactId)
+    if (!contact) return
+    const result = await createChat({
+      participant2Id: contact.userId,
+      propertyId: contact.propertyId,
+      propertyName: contact.propertyName,
+    })
+    if (!result.ok) {
+      toast.error(result.error || t('openFailed'))
+      return
     }
+    setUserChats(prev => [
+      result.data,
+      ...prev.filter(chat => chat.id !== result.data.id),
+    ])
+    setSelectedChatId(result.data.id)
+    setShowNewChatDialog(false)
+    router.replace(`/messages?chatId=${result.data.id}`)
   }
 
-  const filteredProperties = useMemo(() => {
-    if (!searchProperty) return properties.slice(0, 10)
-    const searchLower = searchProperty.toLowerCase()
-    return properties.filter(
-      p =>
-        p.name.toLowerCase().includes(searchLower) ||
-        p.address.toLowerCase().includes(searchLower) ||
-        p.area.toLowerCase().includes(searchLower)
+  const filteredContacts = useMemo(() => {
+    const query = searchProperty.trim().toLowerCase()
+    if (!query) return contacts
+    return contacts.filter(
+      person =>
+        person.name.toLowerCase().includes(query) ||
+        person.label.toLowerCase().includes(query),
     )
-  }, [searchProperty, properties])
+  }, [searchProperty, contacts])
 
   return (
     <Layout>
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold sm:text-3xl">{t('title')}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t('description')}
-          </p>
-        </div>
+      <div className="mx-auto -mb-16 flex h-[calc(100dvh-3.5rem-4.75rem)] min-h-0 w-full max-w-7xl flex-col px-2 py-2 sm:px-4 md:mb-0 md:h-[calc(100dvh-6.25rem)] md:px-6 md:py-4 lg:px-8">
 
         {isLoading ? (
-          <LoadingState label={t('loading')} variant="skeleton" />
+          <div className="flex min-h-0 flex-1 items-center justify-center">
+            <LoadingState label={t('loading')} variant="skeleton" />
+          </div>
         ) : userChats.length === 0 ? (
+          <div className="flex min-h-0 flex-1 items-center justify-center">
           <EmptyState title={t('emptyTitle')} description={t('emptyDesc')}>
             <Button onClick={() => setShowNewChatDialog(true)}>
               <Plus className="mr-2 h-4 w-4" />
               {t('startNewChat')}
             </Button>
           </EmptyState>
+          </div>
         ) : null}
 
         {!isLoading && userChats.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-12rem)]">
-            <div className="lg:col-span-1">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)]">
+            <div className={selectedChatId ? 'hidden min-h-0 lg:block' : 'min-h-0'}>
               <ChatList
                 chats={userChats}
                 currentUserId={currentUserId}
@@ -283,7 +291,11 @@ function MessagesPageContent() {
               />
             </div>
 
-            <div className="lg:col-span-2">
+            <div
+              className={
+                selectedChatId ? 'min-h-0' : 'hidden min-h-0 lg:block'
+              }
+            >
               <ChatWindow
                 chat={selectedChat}
                 currentUserId={currentUserId}
@@ -292,6 +304,14 @@ function MessagesPageContent() {
                 onSendMessage={handleSendMessage}
                 onSendFile={handleSendFile}
                 onCall={handleCall}
+                onBack={
+                  selectedChatId
+                    ? () => {
+                        setSelectedChatId(null)
+                        router.replace('/messages')
+                      }
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -319,27 +339,33 @@ function MessagesPageContent() {
               </div>
 
               <div>
-                <Label>{t('chooseProperty')}</Label>
-                <Select
-                  value={selectedPropertyId}
-                  onValueChange={setSelectedPropertyId}
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder={t('selectProperty')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredProperties.map(property => (
-                      <SelectItem key={property.id} value={property.id}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{property.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {property.area}, {property.city}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>{t('choosePerson')}</Label>
+                {filteredContacts.length === 0 ? (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {t('noContactsDesc')}
+                  </p>
+                ) : (
+                  <Select
+                    value={selectedContactId}
+                    onValueChange={setSelectedContactId}
+                  >
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder={t('choosePerson')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredContacts.map(person => (
+                        <SelectItem key={person.userId} value={person.userId}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{person.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {person.label}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div className="flex gap-2">
@@ -353,7 +379,7 @@ function MessagesPageContent() {
                 <Button
                   className="flex-1"
                   onClick={handleNewChat}
-                  disabled={!selectedPropertyId}
+                  disabled={!selectedContactId}
                 >
                   {t('startChat')}
                 </Button>

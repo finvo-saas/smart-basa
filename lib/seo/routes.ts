@@ -29,6 +29,7 @@ export const publicNoIndexPaths = [
   '/role-selection',
   '/account/recover',
   '/account/change-phone',
+  '/set-pin',
 ] as const
 
 /** Prefixes blocked in robots.txt and tagged noindex via middleware. */

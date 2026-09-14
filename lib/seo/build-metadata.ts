@@ -52,10 +52,6 @@ export function buildMetadata({
     keywords: keywords.length > 0 ? keywords : undefined,
     alternates: {
       canonical,
-      languages: {
-        en: canonical,
-        bn: canonical,
-      },
     },
     robots: noindex
       ? { index: false, follow: false, googleBot: { index: false, follow: false } }
@@ -83,6 +79,18 @@ export function buildMetadata({
     other: {
       'apple-mobile-web-app-capable': 'yes',
       'mobile-web-app-capable': 'yes',
+    },
+    icons: {
+      icon: [
+        { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+        { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+      ],
+      apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180' }],
+    },
+    appleWebApp: {
+      capable: true,
+      title: siteConfig.shortName,
+      statusBarStyle: 'default',
     },
   }
 }

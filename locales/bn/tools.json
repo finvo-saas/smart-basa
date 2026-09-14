@@ -85,11 +85,17 @@
     "searchPlaceholder": "কথোপকথন খুঁজুন…",
     "selectProperty": "চ্যাট শুরু করতে সম্পত্তি নির্বাচন করুন",
     "startNewChat": "নতুন চ্যাট শুরু",
-    "startNewChatDesc": "মালিকের সাথে চ্যাট শুরু করতে সম্পত্তি নির্বাচন করুন",
-    "searchProperty": "সম্পত্তি খুঁজুন",
-    "searchPropertyPlaceholder": "নাম, ঠিকানা বা এলাকা দিয়ে খুঁজুন…",
-    "chooseProperty": "সম্পত্তি বেছে নিন",
-    "startChat": "চ্যাট শুরু"
+    "startNewChatDesc": "যাদের সাথে আপনার লেনদেন আছে সেই মালিক বা ভাড়াটিয়াকে বার্তা পাঠান। তারা নোটিফিকেশন পাবে।",
+    "searchProperty": "খুঁজুন",
+    "searchPropertyPlaceholder": "নাম দিয়ে খুঁজুন…",
+    "chooseProperty": "একজন বেছে নিন",
+    "choosePerson": "একজন বেছে নিন",
+    "noContacts": "এখন বার্তা পাঠানোর মতো কেউ নেই",
+    "noContactsDesc": "তালিকা থেকে মালিককে, অথবা বুকিং বা ফ্ল্যাট থেকে ভাড়াটিয়াকে বার্তা পাঠান।",
+    "startChat": "চ্যাট শুরু",
+    "back": "ফিরে যান",
+    "sendFailed": "বার্তা পাঠানো যায়নি।",
+    "openFailed": "এই চ্যাট খোলা যায়নি।"
   },
   "documents": {
     "title": "নথি",

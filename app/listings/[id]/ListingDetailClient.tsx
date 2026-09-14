@@ -64,6 +64,8 @@ import {
 } from '@/lib/api/reviews'
 import { createBooking } from '@/lib/api/bookings'
 import { listingPath, messPath } from '@/lib/seo/slug'
+import { chatWithPath } from '@/lib/chat/link'
+import { getCurrentAccountUserId } from '@/lib/api/account'
 import { reportDiscoverItem } from '@/lib/api/discover'
 import { toast } from '@/lib/feedback/toast'
 import { rememberAuthReturn } from '@/utils/auth'
@@ -88,6 +90,7 @@ export function ListingDetailClient({ id }: { id: string }) {
   const tContact = useTranslations('contact')
   const { formatCurrency } = useAppFormat()
   const router = useRouter()
+  const currentUserId = getCurrentAccountUserId()
   const [showBooking, setShowBooking] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const [reporting, setReporting] = useState(false)
@@ -295,9 +298,19 @@ export function ListingDetailClient({ id }: { id: string }) {
               />
               <Button
                 variant="outline"
-                onClick={() =>
-                  router.push(`/messages?propertyId=${property.id}`)
-                }
+                onClick={() => {
+                  if (currentUserId && currentUserId === property.ownerId) {
+                    router.push('/messages')
+                    return
+                  }
+                  router.push(
+                    chatWithPath({
+                      userId: property.ownerId,
+                      propertyId: property.id,
+                      propertyName: property.name,
+                    }),
+                  )
+                }}
               >
                 <MessageCircle className="mr-2 h-4 w-4" />
                 {t('chatOwner')}
@@ -341,9 +354,9 @@ export function ListingDetailClient({ id }: { id: string }) {
           ) : null}
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-          <div className="space-y-8">
-            <Tabs defaultValue="photos">
+        <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="min-w-0 space-y-8">
+            <Tabs defaultValue="photos" className="min-w-0">
               <TabsList>
                 <TabsTrigger value="photos">{t('photos')}</TabsTrigger>
                 {property.tourImages && property.tourImages.length > 0 && (
@@ -359,7 +372,7 @@ export function ListingDetailClient({ id }: { id: string }) {
                   {t('reviewsTab', { count: summary?.totalReviews ?? 0 })}
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="photos" className="mt-4">
+              <TabsContent value="photos" className="mt-4 min-w-0">
                 <ImageGallery
                   images={property.images}
                   propertyName={property.name}

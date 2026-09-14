@@ -26,6 +26,12 @@ export async function middleware(request: NextRequest) {
 
   if (shouldNoIndex(request.nextUrl.pathname)) {
     response.headers.set('X-Robots-Tag', 'noindex, nofollow')
+  } else if (
+    request.nextUrl.pathname === '/search' &&
+    request.nextUrl.search
+  ) {
+    // Keep the search landing page indexed, but not every filter combination.
+    response.headers.set('X-Robots-Tag', 'noindex, follow')
   }
 
   return response

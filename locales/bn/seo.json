@@ -7,7 +7,10 @@
     "installTitle": "SmartBasa ইনস্টল করুন",
     "installDescription": "হোম স্ক্রিনে যোগ করুন — দ্রুত সার্চ, বিল ও বুকিংয়ের জন্য।",
     "installAction": "ইনস্টল",
-    "dismiss": "এখন নয়"
+    "download": "অ্যাপ ডাউনলোড",
+    "dismiss": "এখন নয়",
+    "iosHint": "Safari-তে Share বাটনে চাপুন, তারপর Add to Home Screen বেছে নিন।",
+    "chromeHint": "Chrome মেনু থেকে Install app বা Add to Home screen বেছে নিন।"
   },
   "pages": {
     "home": {

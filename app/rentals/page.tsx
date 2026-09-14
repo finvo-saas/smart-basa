@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useMockQuery } from '@/hooks/useMockQuery'
 import { fetchRentalSummariesForRenter } from '@/lib/api/rentals'
+import { chatWithPath } from '@/lib/chat/link'
 import { getStoredUserId } from '@/utils/auth-tokens'
 import { useAppFormat } from '@/hooks/useAppFormat'
 import type { RentalSummary } from '@/lib/api/rentals'
@@ -154,7 +155,13 @@ export default function RentalsPage() {
                   </div>
                   <div className="flex flex-wrap gap-2 border-t pt-3">
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/messages?propertyId=${booking.propertyId}`}>
+                      <Link
+                        href={chatWithPath({
+                          userId: booking.ownerId,
+                          propertyId: booking.propertyId,
+                          propertyName: booking.propertyName,
+                        })}
+                      >
                         <MessageCircle className="mr-1.5 h-4 w-4" />
                         {t('chat')}
                       </Link>

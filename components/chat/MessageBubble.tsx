@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import type { ChatMessage } from '@/types/chat'
+import { ChatAvatar } from '@/components/chat/ChatAvatar'
 import { SafeText } from '@/components/security/SafeText'
 import { sanitizeUrl } from '@/lib/security/sanitize'
 
@@ -69,29 +70,17 @@ export function MessageBubble({
       {/* Avatar */}
       {showAvatar && !isOwn && (
         <div className="shrink-0">
-          {senderAvatar ? (
-            <div className="relative h-8 w-8 rounded-full overflow-hidden">
-              <Image
-                src={senderAvatar}
-                alt={senderName || 'User'}
-                fill
-                className="object-cover"
-                sizes="32px"
-              />
-            </div>
-          ) : (
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-xs font-semibold text-primary">
-                {(senderName || 'U').charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
+          <ChatAvatar
+            name={senderName || ''}
+            avatar={senderAvatar}
+            className="h-8 w-8"
+          />
         </div>
       )}
 
       {/* Message Content */}
       <div
-        className={`flex flex-col max-w-[75%] sm:max-w-[60%] ${
+        className={`flex min-w-0 max-w-[min(85%,20rem)] flex-col sm:max-w-[70%] ${
           isOwn ? 'items-end' : 'items-start'
         }`}
       >
@@ -104,7 +93,7 @@ export function MessageBubble({
 
         {/* Message Bubble */}
         <div
-          className={`rounded-2xl px-4 py-2 ${
+          className={`max-w-full break-words rounded-2xl px-3 py-2 [overflow-wrap:anywhere] sm:px-4 ${
             isOwn
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-foreground'
@@ -120,7 +109,7 @@ export function MessageBubble({
           {/* Image Message */}
           {message.type === 'image' && (
             <div className="space-y-2">
-              <div className="relative rounded-lg overflow-hidden max-w-sm">
+              <div className="relative max-w-full overflow-hidden rounded-lg sm:max-w-sm">
                 <Image
                   src={message.content}
                   alt="Shared image"

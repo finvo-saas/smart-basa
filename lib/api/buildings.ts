@@ -33,6 +33,7 @@ export async function createBuilding(data: {
   city: string
   totalFloors: number
   totalFlats: number
+  floorLayouts?: { floorNumber: number; flatCount: number }[]
 }): Promise<ApiResult<Building>> {
   return apiRequest<Building>('/buildings/', {
     method: 'POST',
@@ -48,6 +49,7 @@ export async function patchBuilding(
     city: string
     totalFloors: number
     totalFlats: number
+    floorLayouts?: { floorNumber: number; flatCount: number }[]
   }>,
 ): Promise<ApiResult<Building>> {
   return apiRequest<Building>(`/buildings/${buildingId}/`, {
